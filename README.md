@@ -12,7 +12,8 @@
 │    - Automated Gates: Code Validation ➔ GitLeaks ➔ Docker Build ➔ Trivy ➔ Staging     │
 ├────────────────────────────────────────────────────────────────────────────────────────┤
 │ 3. INFRASTRUCTURE & CONFIG MANAGEMENT (Phase 3 Implemented)                            │
-│    - Terraform Infrastructure (`terraform/`): VPC, Subnet, Security Group, EC2, IAM   │
+│    - Terraform Infrastructure (`terraform/`): Adopts & manages existing VPC, Subnet,   │
+│      IGW, Route Table, Security Group, EC2, Elastic IP, and EIP Association             │
 │    - Ansible Configuration (`ansible/`): System hardening, Docker Engine, Jenkins      │
 ├────────────────────────────────────────────────────────────────────────────────────────┤
 │ 4. FUTURE KUBERNETES & CLOUD PLATFORM (Phase 4 Target)                                 │
@@ -43,7 +44,7 @@
 ---
 
 ## Phase 3 Overview: Infrastructure as Code & Configuration Management
-- **Terraform Infrastructure:** [`terraform/`](terraform/) provisions AWS VPC, Subnet, Security Group (`nexvion-sg`), Ubuntu 22.04 LTS EC2 (`t3.small`), and IAM EC2 Instance Profile (`AmazonEC2ContainerRegistryReadOnly`).
+- **Terraform Infrastructure:** [`terraform/`](terraform/) adopts and declaratively manages existing AWS infrastructure: VPC (`vpc-09df3f5fdabdcf81f`), Subnet (`subnet-048f480df580a47f8`), Internet Gateway (`igw-045a89bde29483b3a`), Route Table (`rtb-0b5c00adb98133d97`), Security Group (`sg-0e2c619a238e449df`), EC2 instance `i-057f6d6d0bbb33b37` (Tag Name: `Nexvion`, `t3.small`), Elastic IP (`52.66.25.69`, `eipalloc-0662e014367e516bf`), and EIP Association (`eipassoc-0dfe320300f89e0da`).
 - **Ansible Server Configuration:** [`ansible/`](ansible/) playbooks and roles (`common`, `docker`, `jenkins`, `security`) automate system package management, Docker Engine setup, Jenkins LTS service, and server hardening (`sysctl`, UFW firewall).
 - **Detailed Architecture Specification:** See [`docs/phase-3.md`](docs/phase-3.md) for full IaC architecture, Ansible role specifications, and execution instructions.
 
@@ -72,7 +73,7 @@ docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:0.60.
 cd terraform && terraform fmt -check -recursive && terraform init && terraform validate && cd ..
 
 # 7. Validate Ansible Configuration Playbooks
-cd ansible && ansible-playbook -i inventory/hosts.ini.example playbooks/site.yml --syntax-check && cd ..
+cd ansible && ansible-playbook -i inventory/hosts.ini playbooks/site.yml --syntax-check && cd ..
 
 # 8. Deploy Local Staging Stack
 docker compose up -d --force-recreate
@@ -91,6 +92,6 @@ docker compose down
 
 | Credential ID | Type | Description | Target Stage |
 | :--- | :--- | :--- | :--- |
-| `ecr-credentials` | Username with Password | Temporary Phase 2 fallback AWS credentials (Replaced by IAM Roles / IRSA in Phase 3/4) | Stage 6: Registry Push |
+| `ecr-credentials` | Username with Password | Temporary Phase 2 fallback AWS credentials (Replaced by IAM Roles in Future Phase 4) | Stage 6: Registry Push |
 | `docker-registry-credentials` | Username with Password | Docker Hub Username & Access Token (Optional) | Stage 6: Registry Push |
 | `github-webhook-secret` | Secret text | Shared secret token for GitHub webhook payloads | SCM Trigger |

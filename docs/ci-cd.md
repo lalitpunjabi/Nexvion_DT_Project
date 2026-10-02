@@ -14,8 +14,10 @@ This pipeline architecture establishes three distinct operational scopes:
 │    - Automated Gates: Code Validation ➔ GitLeaks ➔ Docker Build ➔ Trivy ➔ Staging     │
 │    - Note: Pipeline syntax verified; live execution triggers upon Jenkins job run.    │
 ├────────────────────────────────────────────────────────────────────────────────────────┤
-│ 3. FUTURE AWS/KUBERNETES DEPLOYMENT (Production Cloud Platform - Phase 3 & 4)         │
-│    - Infrastructure as Code (Phase 3 Terraform) + IAM Roles (IRSA)                      │
+│ 3. INFRASTRUCTURE & CONFIG MANAGEMENT (Phase 3 Implemented)                            │
+│    - Infrastructure as Code (Phase 3 Terraform) + Ansible Configuration                │
+├────────────────────────────────────────────────────────────────────────────────────────┤
+│ 4. FUTURE KUBERNETES & CLOUD PLATFORM (Phase 4 Target - Future Scope)                  │
 │    - Amazon EKS + Helm Chart Rolling Updates with Immutable Git SHA Tags (Phase 4)     │
 └────────────────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -29,14 +31,14 @@ This pipeline architecture establishes three distinct operational scopes:
 
 ---
 
-## AWS ECR Authentication Strategy (Phase 2 vs Phase 3/4)
+## AWS ECR Authentication Strategy (Phase 2 vs Future Phase 4 Scope)
 
 > [!NOTE]
-> **Phase 2 Credential Mechanism (Temporary Fallback):**
-> In Phase 2 local/staging pipeline demonstrations, optional registry authentication uses Jenkins Credential Manager (`ecr-credentials`) holding temporary AWS credentials.
+> **Phase 2 / Phase 3 Local & Staging Pipeline Strategy:**
+> For local testing and current staging pipelines (`REGISTRY_TYPE = 'LOCAL_ONLY'`), image building and staging deployments occur locally on the EC2 host via Docker Compose without requiring external registry credentials.
 >
-> **Phase 3/4 Production Strategy (IAM Roles & IRSA):**
-> In Phase 3 (Terraform) and Phase 4 (Kubernetes), static credentials will be eliminated entirely. Jenkins agents running on AWS EC2 or EKS will authenticate via **IAM Instance Profiles** or **IRSA (IAM Roles for Service Accounts)** using short-lived tokens generated via `aws ecr get-login-password --region ap-south-1` without static secret keys.
+> **Future Production Strategy (IAM Roles & IRSA - Phase 4 Scope):**
+> In Phase 4 (Kubernetes EKS deployment), static credentials can be replaced by IAM Instance Profiles or IRSA (IAM Roles for Service Accounts) using short-lived tokens generated via `aws ecr get-login-password --region ap-south-1`.
 
 ---
 

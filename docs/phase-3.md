@@ -27,7 +27,7 @@ Phase 3 establishes automated Infrastructure as Code (IaC) and Configuration Man
 
 ## 3. Ansible Architecture & Idempotency Controls
 - **Target Host:** `52.66.25.69` (`ubuntu` user, SSH key `~/.ssh/Nexvion.pem`).
-- **Idempotency Strategy:** Playbooks check existing binary paths (`which docker`, `which jenkins`) before modifying services to avoid service downtime or data overwrite.
+- **Idempotency Strategy:** Playbooks gather package facts (`ansible.builtin.package_facts`) to detect existing installation packages before executing configuration tasks to avoid redundant service installs or data overwrites.
 - **Role Breakdown:**
   1. `common`: OS package update cache, UTC timezone, base packages (`curl`, `git`, `jq`, `ufw`), deployment path `/opt/nexvion`.
   2. `docker`: Checks existing installation, configures `/etc/docker/daemon.json` log limits (`10m`, 3 log files limit), adds `ubuntu` & `jenkins` users to `docker` group.
@@ -129,7 +129,7 @@ ansible-playbook -i inventory/hosts.ini playbooks/site.yml --check
 
 ```ini
 [nexvion_servers]
-nexvion-ec2-staging ansible_host=52.66.25.69 ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/Nexvion.pem
+nexvion-ec2 ansible_host=52.66.25.69 ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/Nexvion.pem
 
 [nexvion_servers:vars]
 ansible_python_interpreter=/usr/bin/python3
@@ -196,5 +196,5 @@ ansible_python_interpreter=/usr/bin/python3
 ## 15. How Phase 3 Connects to Jenkins
 Terraform and Ansible validate infrastructure and server configuration without disturbing live services:
 - Stage 2 (`Validate`) in `Jenkinsfile` runs non-destructive `terraform validate` and `ansible-playbook --syntax-check`.
-- `terraform plan` verifies zero resource replacements (`0 to add, 0 to destroy`).
+- `terraform plan` verifies zero resource replacements (`0 to add, 7 to change, 0 to destroy`).
 - Phase 2 core workflow (`Checkout` -> `Validate` -> `Secret Scan` -> `Docker Build` -> `Image Scan` -> `Staging Deployment` -> `Health Check`) remains 100% operational.

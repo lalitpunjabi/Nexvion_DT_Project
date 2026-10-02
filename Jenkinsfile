@@ -1155,16 +1155,6 @@ pipeline {
                 label:
                     'Collect Docker Diagnostics'
             )
-
-
-            // --------------------------------------------------------------
-            // Clean Jenkins workspace.
-            // --------------------------------------------------------------
-
-            cleanWs(
-                deleteDirs: true,
-                notFailBuild: true
-            )
         }
 
 
@@ -1219,16 +1209,33 @@ pipeline {
 
                     echo ""
 
-                    docker compose ps || true
+                    docker inspect nexvion-web-container 2>/dev/null || true
 
                     echo ""
 
-                    docker compose logs --tail=100 || true
+                    docker logs --tail=100 nexvion-web-container 2>/dev/null || true
 
                 ''',
 
                 label:
                     'Collect Failure Diagnostics'
+            )
+        }
+
+
+        // ----------------------------------------------------------------------
+        // CLEANUP
+        // ----------------------------------------------------------------------
+
+        cleanup {
+
+            // --------------------------------------------------------------
+            // Clean Jenkins workspace after all post actions complete.
+            // --------------------------------------------------------------
+
+            cleanWs(
+                deleteDirs: true,
+                notFailBuild: true
             )
         }
     }

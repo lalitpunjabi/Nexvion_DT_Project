@@ -30,4 +30,4 @@ terraform plan
 ```
 
 > [!NOTE]
-> `terraform plan` results in `0 to add, 0 to destroy` — guaranteeing non-destructive management of the active EC2 server `i-057f6d6d0bbb33b37` and Elastic IP `52.66.25.69`.
+> Execution of `terraform plan` verifies native HCL import of existing resources (`Plan: 8 to import, 0 to add, 7 to change, 0 to destroy`), guaranteeing 0 resource replacements, 0 deletions, and 0 additions to the active EC2 server `i-057f6d6d0bbb33b37` and Elastic IP `52.66.25.69`.

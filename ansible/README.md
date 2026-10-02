@@ -10,44 +10,44 @@ This module provides idempotent Ansible playbooks and roles for configuring an E
 
 ## Setup & Execution Workflow
 
-### 1. Local Inventory Setup
-Copy the inventory template to create your local `hosts.ini` (which is excluded from Git tracking via `.gitignore`):
+Follow this 7-step workflow safely:
 
-```bash
-cp inventory/hosts.ini.example inventory/hosts.ini
-```
+1. **Copy Inventory Template:**
+   Copy the example inventory template to create your active `hosts.ini` (git-ignored):
+   ```bash
+   cp inventory/hosts.ini.example inventory/hosts.ini
+   ```
 
-### 2. SSH Key Requirement
-Ensure your EC2 SSH private key (`Nexvion.pem`) is located at `~/.ssh/Nexvion.pem` with restricted read-only permissions:
+2. **Configure SSH Key:**
+   Ensure your AWS EC2 SSH key (`Nexvion.pem`) is placed at `~/.ssh/Nexvion.pem` with strict permissions:
+   ```bash
+   chmod 400 ~/.ssh/Nexvion.pem
+   ```
 
-```bash
-chmod 400 ~/.ssh/Nexvion.pem
-```
+3. **Test Connectivity:**
+   Verify SSH connectivity and Python availability on the target host:
+   ```bash
+   ansible -i inventory/hosts.ini nexvion_servers -m ping
+   ```
 
-### 3. Connectivity Ping Test
-Test SSH connectivity and Python interpreter availability on the target server:
+4. **Run Syntax Check:**
+   Validate playbook and role syntax without connecting to host:
+   ```bash
+   ansible-playbook -i inventory/hosts.ini playbooks/site.yml --syntax-check
+   ```
 
-```bash
-ansible -i inventory/hosts.ini nexvion_servers -m ping
-```
+5. **Run Check Mode:**
+   Perform a dry-run check mode simulation:
+   ```bash
+   ansible-playbook -i inventory/hosts.ini playbooks/site.yml --check
+   ```
 
-### 4. Playbook Syntax Validation
-Verify syntax correctness across all playbooks and roles:
+6. **Review Changes:**
+   Carefully review all planned changes output by the check-mode dry-run to ensure no unexpected modifications will take place.
 
-```bash
-ansible-playbook -i inventory/hosts.ini playbooks/site.yml --syntax-check
-```
+7. **Execute Live Playbook:**
+   Only after reviewing check-mode output and confirming safety, execute the live playbook:
+   ```bash
+   ansible-playbook -i inventory/hosts.ini playbooks/site.yml
+   ```
 
-### 5. Dry-Run Check Mode
-Run dry-run simulation to review planned configuration changes without modifying live server state:
-
-```bash
-ansible-playbook -i inventory/hosts.ini playbooks/site.yml --check
-```
-
-### 6. Live Playbook Execution
-After reviewing check-mode output, apply server configuration changes:
-
-```bash
-ansible-playbook -i inventory/hosts.ini playbooks/site.yml
-```
