@@ -35,7 +35,7 @@
 - **Deterministic & Immutable Tagging:** Builds Docker images with primary immutable tag `nexvion-web:${GIT_COMMIT_SHORT}` (Git SHA), alongside secondary tags `${BUILD_NUMBER}` and `latest`.
 - **Container Security Scanning (Trivy):** Integrates [Trivy 0.60.0](aquasec/trivy) container scanner with security gate enforcement (`--severity HIGH,CRITICAL --exit-code 1`).
 - **Safe Registry Defaults:** Default execution parameters (`REGISTRY_TYPE = 'LOCAL_ONLY'`, `PUSH_TO_REGISTRY = false`) ensure fresh Jenkins builds run safely without failing on placeholder ECR URIs.
-- **Health Verification:** Post-deployment verification checks `http://localhost:8080/healthz` (200 OK) and root web pages before declaring pipeline success.
+- **Health Verification:** Post-deployment verification checks `http://localhost:8081/healthz` (200 OK) and root web pages before declaring pipeline success.
 - **Detailed Specification:** See [`docs/ci-cd.md`](docs/ci-cd.md) for full CI/CD architecture, plugin lists, credential mappings, and deployment scope documentation.
 
 ---
@@ -63,8 +63,8 @@ docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:0.60.
 docker compose up -d --force-recreate
 
 # 7. Verify Endpoint Health
-curl -i http://localhost:8080/healthz
-curl -i http://localhost:8080/
+curl -i http://localhost:8081/healthz
+curl -i http://localhost:8081/
 
 # 8. Stop Container Stack (Optional Cleanup)
 docker compose down

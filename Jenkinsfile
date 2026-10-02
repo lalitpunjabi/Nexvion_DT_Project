@@ -132,9 +132,9 @@ pipeline {
 
         AWS_REGION = 'ap-south-1'
 
-        HEALTH_CHECK_URL = 'http://localhost:8080/healthz'
+        HEALTH_CHECK_URL = 'http://localhost:8081/healthz'
 
-        ROOT_CHECK_URL = 'http://localhost:8080/'
+        ROOT_CHECK_URL = 'http://localhost:8081/'
 
         GITLEAKS_IMAGE =
             'zricethezav/gitleaks:v8.28.0'
@@ -1041,7 +1041,7 @@ pipeline {
                             script:
                                 "curl -s -o /dev/null " +
                                 "-w '%{http_code}' " +
-                                "http://localhost:8080${page}",
+                                "http://localhost:8081${page}",
 
                             returnStdout: true,
 
@@ -1071,7 +1071,7 @@ pipeline {
                     echo '[PASS] ALL PHASE 2 STAGING HEALTH CHECKS PASSED'
                     echo '============================================================'
 
-                    echo "Website: http://localhost:8080"
+                    echo "Website: http://localhost:8081"
 
                     echo "Health: HTTP 200"
 

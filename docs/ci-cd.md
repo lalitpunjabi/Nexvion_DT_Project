@@ -120,6 +120,6 @@ docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:0.60.
 docker compose up -d --force-recreate
 
 # 7. Verify Endpoint Health
-curl -i http://localhost:8080/healthz
-curl -i http://localhost:8080/
+curl -i http://localhost:8081/healthz
+curl -i http://localhost:8081/
 ```
