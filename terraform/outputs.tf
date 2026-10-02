@@ -18,17 +18,22 @@ output "instance_id" {
   value       = aws_instance.nexvion_server.id
 }
 
+output "elastic_ip" {
+  description = "Elastic IP address allocated to the Nexvion DevOps server"
+  value       = aws_eip.nexvion_eip.public_ip
+}
+
 output "instance_public_ip" {
-  description = "Public IP address of the Nexvion DevOps server"
-  value       = aws_instance.nexvion_server.public_ip
+  description = "Public IP address of the Nexvion DevOps server (Elastic IP: 52.66.25.69)"
+  value       = aws_eip.nexvion_eip.public_ip
 }
 
 output "jenkins_url" {
   description = "URL for accessing Jenkins CI/CD Controller GUI"
-  value       = "http://${aws_instance.nexvion_server.public_ip}:8080"
+  value       = "http://${aws_eip.nexvion_eip.public_ip}:8080"
 }
 
 output "nexvion_staging_url" {
   description = "URL for accessing Nexvion Staging E-Commerce Web Application"
-  value       = "http://${aws_instance.nexvion_server.public_ip}:8081"
+  value       = "http://${aws_eip.nexvion_eip.public_ip}:8081"
 }

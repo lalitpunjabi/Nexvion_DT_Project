@@ -1,9 +1,9 @@
 # Nexvion Phase 3 — Infrastructure as Code (Terraform) & Configuration Management (Ansible)
 
 ## 1. Phase 3 Objective
-Phase 3 establishes automated Infrastructure as Code (IaC) and Configuration Management directly mapping the active reference AWS EC2 environment (`i-057f6d6d0bbb33b37`).
-- **Terraform** imports and models the existing AWS infrastructure (VPC, Subnet, Internet Gateway, Main Route Table, Security Group `launch-wizard-9`, and EC2 instance `i-057f6d6d0bbb33b37`).
-- **Ansible** automates OS configuration, package installation, Docker Engine runtime, Jenkins LTS service, and server hardening on the live EC2 server (`15.207.89.170`).
+Phase 3 establishes automated Infrastructure as Code (IaC) and Configuration Management directly mapping the active reference AWS EC2 server (`i-057f6d6d0bbb33b37`).
+- **Terraform** imports and models the existing AWS infrastructure (VPC, Subnet, Internet Gateway, Main Route Table, Security Group `launch-wizard-9`, EC2 instance `i-057f6d6d0bbb33b37`, and Elastic IP `52.66.25.69`).
+- **Ansible** automates OS configuration, package installation, Docker Engine runtime, Jenkins LTS service, and server hardening on the live EC2 server via Elastic IP (`52.66.25.69`).
 - **Reference Protection:** The active EC2 instance running Jenkins (port 8080) and Nexvion Staging (port 8081) is strictly preserved without destructive recreation or replacement.
 
 ---
@@ -13,7 +13,8 @@ Phase 3 establishes automated Infrastructure as Code (IaC) and Configuration Man
 | Component | Resource ID / Identifier | Attributes |
 | :--- | :--- | :--- |
 | **AWS Region** | `ap-south-1` | Mumbai |
-| **EC2 Instance** | `i-057f6d6d0bbb33b37` | `t3.small`, Ubuntu (`ami-01a00762f46d584a1`), Public IP: `15.207.89.170`, Private IP: `172.31.7.121` |
+| **EC2 Instance** | `i-057f6d6d0bbb33b37` | `t3.small`, Ubuntu (`ami-01a00762f46d584a1`), Tag Name: `Nexvion`, Private IP: `172.31.7.121` |
+| **Elastic IP** | `52.66.25.69` | Allocation ID: `eipalloc-0662e014367e516bf`, Association ID: `eipassoc-0dfe320300f89e0da` |
 | **VPC** | `vpc-09df3f5fdabdcf81f` | CIDR: `172.31.0.0/16` |
 | **Subnet** | `subnet-048f480df580a47f8` | CIDR: `172.31.0.0/20`, AZ: `ap-south-1b`, MapPublicIp: `true` |
 | **Internet Gateway** | `igw-045a89bde29483b3a` | Attached to `vpc-09df3f5fdabdcf81f` |
@@ -25,7 +26,7 @@ Phase 3 establishes automated Infrastructure as Code (IaC) and Configuration Man
 ---
 
 ## 3. Ansible Architecture & Idempotency Controls
-- **Target Host:** `15.207.89.170` (`ubuntu` user, SSH key `~/.ssh/Nexvion.pem`).
+- **Target Host:** `52.66.25.69` (`ubuntu` user, SSH key `~/.ssh/Nexvion.pem`).
 - **Idempotency Strategy:** Playbooks check existing binary paths (`which docker`, `which jenkins`) before modifying services to avoid service downtime or data overwrite.
 - **Role Breakdown:**
   1. `common`: OS package update cache, UTC timezone, base packages (`curl`, `git`, `jq`, `ufw`), deployment path `/opt/nexvion`.
@@ -78,12 +79,12 @@ Nexvion_DT_Project/
 ## 5. Required AWS Prerequisites
 1. **AWS CLI v2** installed and authenticated (`aws configure`).
 2. **Target EC2 Key Pair (`Nexvion.pem`)** downloaded and stored at `~/.ssh/Nexvion.pem` with `chmod 400` permissions.
-3. **AWS Credentials** with permissions to read EC2, VPC, Subnet, Route Table, and Security Group details.
+3. **AWS Credentials** with permissions to read EC2, VPC, Subnet, Route Table, Security Group, and Elastic IP details.
 
 ---
 
 ## 6. Required IAM Permissions
-- `ec2:DescribeInstances`, `ec2:DescribeVpcs`, `ec2:DescribeSubnets`, `ec2:DescribeSecurityGroups`, `ec2:DescribeInternetGateways`, `ec2:DescribeRouteTables`.
+- `ec2:DescribeInstances`, `ec2:DescribeVpcs`, `ec2:DescribeSubnets`, `ec2:DescribeSecurityGroups`, `ec2:DescribeInternetGateways`, `ec2:DescribeRouteTables`, `ec2:DescribeAddresses`.
 
 ---
 
@@ -112,7 +113,7 @@ terraform plan
 ```bash
 cd ansible
 
-# 1. Test SSH ping connectivity
+# 1. Test SSH ping connectivity to Elastic IP (52.66.25.69)
 ansible -i inventory/hosts.ini nexvion_servers -m ping
 
 # 2. Validate playbook syntax
@@ -128,7 +129,7 @@ ansible-playbook -i inventory/hosts.ini playbooks/site.yml --check
 
 ```ini
 [nexvion_servers]
-nexvion-ec2-staging ansible_host=15.207.89.170 ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/Nexvion.pem
+nexvion-ec2-staging ansible_host=52.66.25.69 ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/Nexvion.pem
 
 [nexvion_servers:vars]
 ansible_python_interpreter=/usr/bin/python3
@@ -144,7 +145,7 @@ ansible_python_interpreter=/usr/bin/python3
 ---
 
 ## 11. What is Automated
-- Terraform import and declarative mapping of active AWS EC2 server `i-057f6d6d0bbb33b37` and networking stack.
+- Terraform import and declarative mapping of active AWS EC2 server `i-057f6d6d0bbb33b37`, Elastic IP `52.66.25.69`, and networking stack.
 - Ansible automated ping connectivity, package management, Docker Engine setup, Jenkins service verification, and sysctl hardening.
 
 ---
@@ -159,13 +160,13 @@ ansible_python_interpreter=/usr/bin/python3
 
 | Component | Tool / Command | Result | Status |
 | :--- | :--- | :---: | :---: |
-| **AWS CLI Discovery** | `aws ec2 describe-instances` | Extracted `i-057f6d6d0bbb33b37` (`15.207.89.170`) | **PASS** |
+| **AWS CLI Discovery** | `aws ec2 describe-addresses` | Bound EIP `52.66.25.69` (`eipalloc-0662e014367e516bf`) | **PASS** |
 | **Terraform Syntax Check** | `terraform validate` | `Success! The configuration is valid.` | **PASS** |
-| **Terraform Plan (Import)** | `terraform plan` | `Plan: 6 to import, 0 to add, 6 to change, 0 to destroy.` | **PASS** |
+| **Terraform Plan (Import)** | `terraform plan` | `Plan: 8 to import, 0 to add, 7 to change, 0 to destroy.` | **PASS** |
 | **Ansible Ping Check** | `ansible -m ping` | `SUCCESS => {"ping": "pong"}` | **PASS** |
 | **Ansible Playbook Syntax** | `ansible-playbook --syntax-check` | Clean Syntax | **PASS** |
-| **Live Jenkins GUI** | `http://15.207.89.170:8080` | Active | **PASS** |
-| **Live Nexvion Web App** | `http://15.207.89.170:8081/healthz` | `HTTP 200 OK` | **PASS** |
+| **Live Jenkins GUI** | `http://52.66.25.69:8080` | Active | **PASS** |
+| **Live Nexvion Web App** | `http://52.66.25.69:8081/healthz` | `HTTP 200 OK` | **PASS** |
 
 ---
 
@@ -174,9 +175,9 @@ ansible_python_interpreter=/usr/bin/python3
 ```
 ┌────────────────────────────────────────────────────────────────────────┐
 │ TERRAFORM (Infrastructure Declarative Mapping)                         │
-│ Imports & manages existing AWS VPC, Subnet, IGW, SG, and EC2           │
+│ Imports & manages existing AWS VPC, Subnet, IGW, SG, EIP & EC2         │
 └──────────────────────────────────┬─────────────────────────────────────┘
-                                   │ (Host IP: 15.207.89.170)
+                                   │ (Elastic IP: 52.66.25.69)
                                    ▼
 ┌────────────────────────────────────────────────────────────────────────┐
 │ ANSIBLE (Server Configuration Management)                              │

@@ -136,7 +136,9 @@ resource "aws_instance" "nexvion_server" {
     delete_on_termination = true
   }
 
-  tags = {}
+  tags = {
+    Name = "Nexvion"
+  }
 
   lifecycle {
     ignore_changes = [
@@ -148,7 +150,22 @@ resource "aws_instance" "nexvion_server" {
 }
 
 # ------------------------------------------------------------------------------
-# 4. Terraform Import Blocks for Existing AWS Infrastructure
+# 4. Existing Elastic IP & Association (eipalloc-0662e014367e516bf)
+# ------------------------------------------------------------------------------
+resource "aws_eip" "nexvion_eip" {
+  domain = "vpc"
+  tags = {
+    Name = "Nexvion"
+  }
+}
+
+resource "aws_eip_association" "nexvion_eip_assoc" {
+  allocation_id = aws_eip.nexvion_eip.id
+  instance_id   = aws_instance.nexvion_server.id
+}
+
+# ------------------------------------------------------------------------------
+# 5. Terraform Import Blocks for Existing AWS Infrastructure
 # ------------------------------------------------------------------------------
 import {
   to = aws_vpc.main
@@ -178,4 +195,14 @@ import {
 import {
   to = aws_instance.nexvion_server
   id = "i-057f6d6d0bbb33b37"
+}
+
+import {
+  to = aws_eip.nexvion_eip
+  id = "eipalloc-0662e014367e516bf"
+}
+
+import {
+  to = aws_eip_association.nexvion_eip_assoc
+  id = "eipassoc-0dfe320300f89e0da"
 }
