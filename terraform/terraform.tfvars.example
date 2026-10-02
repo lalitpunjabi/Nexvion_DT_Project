@@ -1,0 +1,14 @@
+# ==============================================================================
+# Nexvion Infrastructure Terraform Variables Example
+# Matched to active reference AWS EC2 server i-057f6d6d0bbb33b37
+# ==============================================================================
+
+aws_region        = "ap-south-1"
+environment       = "staging"
+vpc_cidr          = "172.31.0.0/16"
+subnet_cidr       = "172.31.0.0/20"
+availability_zone = "ap-south-1b"
+instance_type     = "t3.small"
+ami_id            = "ami-01a00762f46d584a1"
+key_name          = "Nexvion"
+root_volume_size  = 20

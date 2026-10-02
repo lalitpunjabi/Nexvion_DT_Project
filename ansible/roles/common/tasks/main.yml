@@ -1,0 +1,22 @@
+---
+- name: Update apt cache if older than 1 hour
+  ansible.builtin.apt:
+    update_cache: yes
+    cache_valid_time: 3600
+
+- name: Ensure system timezone is configured
+  ansible.builtin.command: timedatectl set-timezone {{ timezone }}
+  changed_when: false
+
+- name: Install common system utility packages
+  ansible.builtin.apt:
+    name: "{{ common_packages }}"
+    state: present
+
+- name: Ensure Nexvion application deployment directory exists
+  ansible.builtin.file:
+    path: "{{ deploy_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'

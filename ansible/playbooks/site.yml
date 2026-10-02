@@ -1,0 +1,26 @@
+---
+# ==============================================================================
+# Nexvion Workload Server Configuration & DevSecOps Provisioning Playbook
+# Target: Ubuntu 22.04 LTS EC2 Instance (Idempotent execution)
+# ==============================================================================
+
+- name: Configure Nexvion DevOps & Staging Server
+  hosts: nexvion_servers
+  become: true
+  gather_facts: true
+
+  vars:
+    app_name: "nexvion-web"
+    app_port: 8081
+    jenkins_port: 8080
+    deploy_dir: "/opt/nexvion"
+
+  roles:
+    - role: common
+      tags: [common, base]
+    - role: docker
+      tags: [docker, container]
+    - role: jenkins
+      tags: [jenkins, cicd]
+    - role: security
+      tags: [security, hardening]

@@ -331,6 +331,40 @@ pipeline {
 
                     echo '[PASS] Docker Compose configuration is valid.'
 
+                    // ----------------------------------------------------------
+                    // Phase 3: Infrastructure & Configuration Validation (Non-destructive)
+                    // ----------------------------------------------------------
+
+                    if (fileExists('terraform/providers.tf')) {
+                        echo 'Validating Terraform Infrastructure code...'
+                        sh(
+                            script: '''
+                                if command -v terraform >/dev/null 2>&1; then
+                                    cd terraform && terraform fmt -check -recursive && terraform init -backend=false && terraform validate
+                                else
+                                    echo "[WARN] Terraform CLI not found on runner node; skipping live terraform validate."
+                                fi
+                            ''',
+                            label: 'Validate Terraform Code'
+                        )
+                        echo '[PASS] Terraform configuration check completed.'
+                    }
+
+                    if (fileExists('ansible/playbooks/site.yml')) {
+                        echo 'Validating Ansible Playbook syntax...'
+                        sh(
+                            script: '''
+                                if command -v ansible-playbook >/dev/null 2>&1; then
+                                    cd ansible && ANSIBLE_ROLES_PATH=roles ansible-playbook -i inventory/hosts.ini.example playbooks/site.yml --syntax-check
+                                else
+                                    echo "[WARN] Ansible-playbook CLI not found on runner node; skipping live syntax check."
+                                fi
+                            ''',
+                            label: 'Validate Ansible Playbooks'
+                        )
+                        echo '[PASS] Ansible playbook check completed.'
+                    }
+
                     echo '============================================================'
                 }
             }

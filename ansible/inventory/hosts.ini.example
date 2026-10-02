@@ -1,0 +1,11 @@
+# ==============================================================================
+# Nexvion Ansible Inventory Example
+# Replace 192.0.2.10 with your actual AWS EC2 Public IP address or DNS hostname.
+# Ensure your SSH private key path is correct.
+# ==============================================================================
+
+[nexvion_servers]
+nexvion-ec2-staging ansible_host=192.0.2.10 ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/nexvion-ec2-key.pem
+
+[nexvion_servers:vars]
+ansible_python_interpreter=/usr/bin/python3

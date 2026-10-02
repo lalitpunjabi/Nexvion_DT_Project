@@ -1,0 +1,21 @@
+# Private Keys & AWS Credentials
+*.pem
+*.key
+id_rsa
+id_ed25519
+
+# Terraform State & Local Files
+terraform/.terraform/
+terraform/*.tfstate
+terraform/*.tfstate.*
+terraform/terraform.tfvars
+terraform/*.auto.tfvars
+terraform/crash.log
+
+# Ansible Host Inventories & Secrets
+ansible/inventory/hosts.ini
+
+# System & OS Files
+.DS_Store
+Thumbs.db
+node_modules/

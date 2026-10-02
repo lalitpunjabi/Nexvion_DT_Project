@@ -10,11 +10,13 @@
 │ 2. LIVE JENKINS EXECUTION (Automated CI/CD Pipeline - Phase 2 Configured)              │
 │    - Declarative Jenkinsfile executed on Linux Runner Agent (`label 'linux'`)          │
 │    - Automated Gates: Code Validation ➔ GitLeaks ➔ Docker Build ➔ Trivy ➔ Staging     │
-│    - Note: Pipeline logic validated locally; triggers upon Jenkins SCM checkout.      │
 ├────────────────────────────────────────────────────────────────────────────────────────┤
-│ 3. FUTURE AWS/KUBERNETES DEPLOYMENT (Production Cloud Target - Phase 3 & 4)            │
-│    - Terraform Infrastructure (Phase 3) + IAM Roles / IRSA for ECR authentication      │
-│    - Amazon EKS + Helm Chart Rolling Updates with Immutable Git SHA Tags (Phase 4)     │
+│ 3. INFRASTRUCTURE & CONFIG MANAGEMENT (Phase 3 Implemented)                            │
+│    - Terraform Infrastructure (`terraform/`): VPC, Subnet, Security Group, EC2, IAM   │
+│    - Ansible Configuration (`ansible/`): System hardening, Docker Engine, Jenkins      │
+├────────────────────────────────────────────────────────────────────────────────────────┤
+│ 4. FUTURE KUBERNETES & CLOUD PLATFORM (Phase 4 Target)                                 │
+│    - Amazon EKS + Helm Chart Rolling Updates with Immutable Git SHA Tags               │
 └────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -40,6 +42,13 @@
 
 ---
 
+## Phase 3 Overview: Infrastructure as Code & Configuration Management
+- **Terraform Infrastructure:** [`terraform/`](terraform/) provisions AWS VPC, Subnet, Security Group (`nexvion-sg`), Ubuntu 22.04 LTS EC2 (`t3.small`), and IAM EC2 Instance Profile (`AmazonEC2ContainerRegistryReadOnly`).
+- **Ansible Server Configuration:** [`ansible/`](ansible/) playbooks and roles (`common`, `docker`, `jenkins`, `security`) automate system package management, Docker Engine setup, Jenkins LTS service, and server hardening (`sysctl`, UFW firewall).
+- **Detailed Architecture Specification:** See [`docs/phase-3.md`](docs/phase-3.md) for full IaC architecture, Ansible role specifications, and execution instructions.
+
+---
+
 ### Local Validation Commands
 
 ```bash
@@ -59,14 +68,20 @@ docker build -t nexvion-web:${GIT_SHA} -t nexvion-web:latest .
 # 5. Execute Trivy Vulnerability Scan (Pinned Version 0.60.0)
 docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:0.60.0 image --severity HIGH,CRITICAL --exit-code 1 nexvion-web:${GIT_SHA}
 
-# 6. Deploy Local Staging Stack
+# 6. Validate Terraform Infrastructure Code
+cd terraform && terraform fmt -check -recursive && terraform init && terraform validate && cd ..
+
+# 7. Validate Ansible Configuration Playbooks
+cd ansible && ansible-playbook -i inventory/hosts.ini.example playbooks/site.yml --syntax-check && cd ..
+
+# 8. Deploy Local Staging Stack
 docker compose up -d --force-recreate
 
-# 7. Verify Endpoint Health
+# 9. Verify Endpoint Health
 curl -i http://localhost:8081/healthz
 curl -i http://localhost:8081/
 
-# 8. Stop Container Stack (Optional Cleanup)
+# 10. Stop Container Stack (Optional Cleanup)
 docker compose down
 ```
 

@@ -1,0 +1,16 @@
+---
+common_packages:
+  - curl
+  - wget
+  - git
+  - unzip
+  - tar
+  - htop
+  - ca-certificates
+  - gnupg
+  - lsb-release
+  - ufw
+  - jq
+  - software-properties-common
+timezone: "UTC"
+deploy_dir: "/opt/nexvion"

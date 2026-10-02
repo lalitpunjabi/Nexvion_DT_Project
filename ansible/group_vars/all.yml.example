@@ -1,0 +1,17 @@
+---
+# ==============================================================================
+# Nexvion Ansible Group Variables Example
+# Global configurations for all Nexvion server deployment roles.
+# ==============================================================================
+
+app_name: "nexvion-web"
+app_port: 8081
+jenkins_port: 8080
+deploy_dir: "/opt/nexvion"
+docker_users:
+  - ubuntu
+  - jenkins
+
+# Security settings
+sysctl_syncookies: 1
+ufw_enabled: true

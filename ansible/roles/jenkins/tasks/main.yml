@@ -1,0 +1,46 @@
+---
+- name: Check if Jenkins service is already installed
+  ansible.builtin.command: which jenkins
+  register: jenkins_check
+  ignore_errors: true
+  changed_when: false
+
+- name: Install Java JDK prerequisite
+  ansible.builtin.apt:
+    name: "{{ java_package }}"
+    state: present
+    update_cache: yes
+
+- name: Add Jenkins repository GPG key
+  ansible.builtin.get_url:
+    url: https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key
+    dest: /usr/share/keyrings/jenkins-keyring.asc
+    mode: '0644'
+  when: jenkins_check.rc != 0
+
+- name: Add Jenkins apt repository
+  ansible.builtin.apt_repository:
+    repo: "deb [signed-by=/usr/share/keyrings/jenkins-keyring.asc] https://pkg.jenkins.io/debian-stable binary/"
+    state: present
+    filename: jenkins
+  when: jenkins_check.rc != 0
+
+- name: Install Jenkins service package
+  ansible.builtin.apt:
+    name: jenkins
+    state: present
+    update_cache: yes
+  when: jenkins_check.rc != 0
+
+- name: Ensure Jenkins user is in docker group
+  ansible.builtin.user:
+    name: jenkins
+    groups: docker
+    append: yes
+  ignore_errors: true
+
+- name: Ensure Jenkins service is enabled and running
+  ansible.builtin.service:
+    name: jenkins
+    state: started
+    enabled: yes
