@@ -4,12 +4,13 @@
 
 ```
 ┌────────────────────────────────────────────────────────────────────────────────────────┐
-│ 1. LOCAL VALIDATION (Developer Workstation)                                            │
+│ 1. LOCAL VALIDATION (Developer Workstation - Executed & Verified)                      │
 │    - CLI commands: docker build, docker compose, gitleaks, trivy, curl health checks   │
 ├────────────────────────────────────────────────────────────────────────────────────────┤
-│ 2. LIVE JENKINS EXECUTION (Automated CI/CD Pipeline - Phase 2)                         │
+│ 2. LIVE JENKINS EXECUTION (Automated CI/CD Pipeline - Phase 2 Configured)              │
 │    - Declarative Jenkinsfile executed on Linux Runner Agent (`label 'linux'`)          │
 │    - Automated Gates: Code Validation ➔ GitLeaks ➔ Docker Build ➔ Trivy ➔ Staging     │
+│    - Note: Pipeline logic validated locally; triggers upon Jenkins SCM checkout.      │
 ├────────────────────────────────────────────────────────────────────────────────────────┤
 │ 3. FUTURE AWS/KUBERNETES DEPLOYMENT (Production Cloud Target - Phase 3 & 4)            │
 │    - Terraform Infrastructure (Phase 3) + IAM Roles / IRSA for ECR authentication      │
@@ -51,20 +52,21 @@ docker compose config
 # 3. Execute GitLeaks Secret Scan (Pinned Version v8.28.0)
 docker run --rm -v "${PWD}:/path" zricethezav/gitleaks:v8.28.0 detect --source="/path" -c="/path/.gitleaks.toml" --no-git -v
 
-# 4. Build Docker Image
-docker build -t nexvion-web:v1.0.0 .
+# 4. Build Docker Image (Using Git SHA as Primary Tag)
+GIT_SHA=$(git rev-parse --short=7 HEAD)
+docker build -t nexvion-web:${GIT_SHA} -t nexvion-web:latest .
 
 # 5. Execute Trivy Vulnerability Scan (Pinned Version 0.60.0)
-docker run --rm -v //var/run/docker.sock:/var/run/docker.sock aquasec/trivy:0.60.0 image nexvion-web:v1.0.0
+docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:0.60.0 image --severity HIGH,CRITICAL --exit-code 1 nexvion-web:${GIT_SHA}
 
 # 6. Deploy Local Staging Stack
-docker compose up -d --build
+docker compose up -d --force-recreate
 
 # 7. Verify Endpoint Health
 curl -i http://localhost:8080/healthz
 curl -i http://localhost:8080/
 
-# 8. Stop Container Stack
+# 8. Stop Container Stack (Optional Cleanup)
 docker compose down
 ```
 

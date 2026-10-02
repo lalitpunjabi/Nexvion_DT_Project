@@ -6,12 +6,13 @@ This pipeline architecture establishes three distinct operational scopes:
 
 ```
 ┌────────────────────────────────────────────────────────────────────────────────────────┐
-│ 1. LOCAL VALIDATION (Developer Workstation)                                            │
+│ 1. LOCAL VALIDATION (Developer Workstation - Executed & Verified)                      │
 │    - Manual CLI execution: docker build, docker compose, gitleaks, trivy, curl checks  │
 ├────────────────────────────────────────────────────────────────────────────────────────┤
-│ 2. LIVE JENKINS EXECUTION (Automated CI/CD Pipeline)                                   │
+│ 2. LIVE JENKINS EXECUTION (Automated CI/CD Pipeline - Phase 2 Configured)              │
 │    - Declarative Jenkinsfile on Linux Runner Agent (`label 'linux'`)                   │
 │    - Automated Gates: Code Validation ➔ GitLeaks ➔ Docker Build ➔ Trivy ➔ Staging     │
+│    - Note: Pipeline syntax verified; live execution triggers upon Jenkins job run.    │
 ├────────────────────────────────────────────────────────────────────────────────────────┤
 │ 3. FUTURE AWS/KUBERNETES DEPLOYMENT (Production Cloud Platform - Phase 3 & 4)         │
 │    - Infrastructure as Code (Phase 3 Terraform) + IAM Roles (IRSA)                      │
@@ -69,7 +70,7 @@ This pipeline architecture establishes three distinct operational scopes:
 ## GitLeaks Secret Scanner Configuration (`.gitleaks.toml`)
 
 - **Strict Scanning Policy:** Broad directory exclusions (e.g., `docs/.*` or `README.md`) have been removed. All documentation, source code, and configuration files are scanned.
-- **Scan Verification:** Verified clean locally across 444+ KB of codebase files (`0 leaks found`).
+- **Scan Verification:** Verified clean locally across 782+ KB of codebase files (`0 leaks found`).
 
 ---
 
@@ -81,7 +82,7 @@ This pipeline architecture establishes three distinct operational scopes:
 4. **Docker Build:** Builds image tagged with Git SHA, Build Number, and Latest.
 5. **Image Scan:** Executes Trivy 0.60.0. Stops pipeline if HIGH/CRITICAL CVEs are found.
 6. **Registry Push:** Authenticates and pushes primary immutable Git SHA tag to AWS ECR (when enabled).
-7. **Deployment:** Deploys local staging container stack using Docker Compose (`docker compose up -d --force-recreate`). (Will be replaced by Kubernetes in Phase 4).
+7. **Staging Deployment:** Deploys local staging container stack using Docker Compose (`docker compose up -d --force-recreate`). (Will be replaced by Kubernetes in Phase 4).
 8. **Health Check:** Verifies HTTP GET `/healthz` (200 OK) and root `/` (200 OK). Stops pipeline on health failure.
 
 ---
@@ -108,14 +109,15 @@ docker compose config
 # 3. Execute GitLeaks Secret Scan (Pinned Version v8.28.0)
 docker run --rm -v "${PWD}:/path" zricethezav/gitleaks:v8.28.0 detect --source="/path" -c="/path/.gitleaks.toml" --no-git -v
 
-# 4. Build Docker Image
-docker build -t nexvion-web:v1.0.0 .
+# 4. Build Docker Image (Using Git SHA as Primary Tag)
+GIT_SHA=$(git rev-parse --short=7 HEAD)
+docker build -t nexvion-web:${GIT_SHA} -t nexvion-web:latest .
 
 # 5. Execute Trivy Vulnerability Scan (Pinned Version 0.60.0)
-docker run --rm -v //var/run/docker.sock:/var/run/docker.sock aquasec/trivy:0.60.0 image nexvion-web:v1.0.0
+docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:0.60.0 image --severity HIGH,CRITICAL --exit-code 1 nexvion-web:${GIT_SHA}
 
 # 6. Deploy Staging Stack
-docker compose up -d --build
+docker compose up -d --force-recreate
 
 # 7. Verify Endpoint Health
 curl -i http://localhost:8080/healthz
