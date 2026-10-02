@@ -16,11 +16,13 @@
 │      IGW, Route Table, Security Group, EC2, Elastic IP, and EIP Association             │
 │    - Ansible Configuration (`ansible/`): System hardening, Docker Engine, Jenkins      │
 ├────────────────────────────────────────────────────────────────────────────────────────┤
-│ 4. KUBERNETES & HELM PLATFORM PACKAGING (Phase 4.1 & 4.2 Implemented)                   │
+│ 4. KUBERNETES, HELM & ECR CONTAINER REGISTRY (Phase 4.1, 4.2 & 4.3 Implemented)        │
 │    - Phase 4.1 Raw Manifests (`kubernetes/`): Namespace, ConfigMap, Secret,            │
 │      Deployment, Service, Ingress, HPA (Validated on Minikube)                          │
 │    - Phase 4.2 Helm Packaging (`helm/nexvion-web/`): Templated Helm 3 Chart with      │
 │      values-dev.yaml & values-prod.yaml (Verified deployed & running on Minikube)      │
+│    - Phase 4.3 ECR Container Registry (`terraform/main.tf`): Immutable `nexvion-web`  │
+│      ECR repository, AES256 encryption, scan-on-push, and 7-day untagged lifecycle     │
 └────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -63,6 +65,17 @@
   - `templates/_helpers.tpl`: Standard Helm label, naming, and selector helpers.
   - `templates/`: Parameterized templates for Namespace, ConfigMap, Secret, Deployment, Service, Ingress, and HPA.
 - **Detailed Specification:** See [`helm/nexvion-web/README.md`](helm/nexvion-web/README.md).
+
+---
+
+## Phase 4.3 Overview: Amazon ECR Container Registry
+- **Amazon ECR Resource:** `aws_ecr_repository.nexvion` (`nexvion-web`) managed via Terraform in `ap-south-1`.
+- **Tag Mutability:** `IMMUTABLE` mode enforced to prevent image tag tampering or overwriting.
+- **Scanning & Encryption:** Native image scan-on-push enabled; AES256 server-side encryption enabled at rest.
+- **Lifecycle Policy:** `aws_ecr_lifecycle_policy.nexvion` automatically purges untagged images >7 days old and retains the 30 most recent tagged releases.
+- **Trivy-Before-Push Workflow:** Image scanning via Trivy `0.60.0` enforced before pushing to ECR; vulnerable builds are blocked at the security gate.
+- **Jenkins Integration:** `Jenkinsfile` Stage 6 supports `AWS_ECR` registry push via short-lived AWS CLI token authentication (`aws ecr get-login-password`), preserving local staging defaults (`LOCAL_ONLY`).
+- **Detailed Specification:** See [`docs/phase-4-3.md`](docs/phase-4-3.md).
 
 ---
 

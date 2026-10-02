@@ -205,3 +205,54 @@ import {
   to = aws_eip_association.nexvion_eip_assoc
   id = "eipassoc-0dfe320300f89e0da"
 }
+
+# ------------------------------------------------------------------------------
+# 6. Amazon ECR Container Registry Infrastructure (Phase 4.3)
+# ------------------------------------------------------------------------------
+resource "aws_ecr_repository" "nexvion" {
+  name                 = "nexvion-web"
+  image_tag_mutability = "IMMUTABLE"
+
+  image_scanning_configuration {
+    scan_on_push = true
+  }
+
+  encryption_configuration {
+    encryption_type = "AES256"
+  }
+}
+
+resource "aws_ecr_lifecycle_policy" "nexvion" {
+  repository = aws_ecr_repository.nexvion.name
+
+  policy = jsonencode({
+    rules = [
+      {
+        rulePriority = 1
+        description  = "Expire untagged images older than 7 days"
+        selection = {
+          tagStatus   = "untagged"
+          countType   = "sinceImagePushed"
+          countUnit   = "days"
+          countNumber = 7
+        }
+        action = {
+          type = "expire"
+        }
+      },
+      {
+        rulePriority = 2
+        description  = "Retain maximum 30 tagged Git SHA images"
+        selection = {
+          tagStatus   = "any"
+          countType   = "imageCountMoreThan"
+          countNumber = 30
+        }
+        action = {
+          type = "expire"
+        }
+      }
+    ]
+  })
+}
+

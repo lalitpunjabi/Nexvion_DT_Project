@@ -37,3 +37,14 @@ output "nexvion_staging_url" {
   description = "URL for accessing Nexvion Staging E-Commerce Web Application"
   value       = "http://${aws_eip.nexvion_eip.public_ip}:8081"
 }
+
+output "ecr_repository_url" {
+  description = "The full repository URL of the Nexvion ECR container registry"
+  value       = aws_ecr_repository.nexvion.repository_url
+}
+
+output "ecr_repository_name" {
+  description = "The name of the Nexvion ECR container registry"
+  value       = aws_ecr_repository.nexvion.name
+}
+

@@ -703,12 +703,45 @@ pipeline {
 
                         echo 'AWS ECR push selected.'
 
-                        error(
-                            'AWS ECR push is intentionally disabled ' +
-                            'for the current Phase 2 test. ' +
-                            'Enable it only after ECR and credentials ' +
-                            'are explicitly configured.'
+                        def registryUrl = params.REGISTRY_URL?.trim() ?: "677012863109.dkr.ecr.${env.AWS_REGION}.amazonaws.com/${env.APP_NAME}"
+                        def ecrHost = registryUrl.contains('/') ? registryUrl.split('/')[0] : registryUrl
+
+                        def ecrImageTag = "${registryUrl}:${commitSha}"
+                        def ecrBuildTag = "${registryUrl}:${env.BUILD_NUMBER}"
+
+                        echo "Authenticating Docker to Amazon ECR host: ${ecrHost}..."
+                        sh(
+                            script: """
+                                aws ecr get-login-password --region ${env.AWS_REGION} | docker login --username AWS --password-stdin ${ecrHost}
+                            """,
+                            label: 'AWS ECR Authentication'
                         )
+
+                        echo "Tagging local image ${localCommit} as ${ecrImageTag}..."
+                        sh(
+                            script: "docker tag ${localCommit} ${ecrImageTag}",
+                            label: 'Tag Image for ECR (Git SHA)'
+                        )
+
+                        echo "Tagging local image ${localCommit} as ${ecrBuildTag}..."
+                        sh(
+                            script: "docker tag ${localCommit} ${ecrBuildTag}",
+                            label: 'Tag Image for ECR (Build Number)'
+                        )
+
+                        echo "Pushing immutable Git SHA image to Amazon ECR: ${ecrImageTag}..."
+                        sh(
+                            script: "docker push ${ecrImageTag}",
+                            label: 'Push Git SHA Image to ECR'
+                        )
+
+                        echo "Pushing Build Number image tag to Amazon ECR: ${ecrBuildTag}..."
+                        sh(
+                            script: "docker push ${ecrBuildTag}",
+                            label: 'Push Build Number Image to ECR'
+                        )
+
+                        echo "[PASS] Image successfully pushed to Amazon ECR: ${ecrImageTag}"
                     }
 
 
