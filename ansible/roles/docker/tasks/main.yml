@@ -10,6 +10,7 @@
       - curl
       - gnupg
     state: present
+    update_cache: yes
 
 - name: Create Docker keyring directory
   ansible.builtin.file:
@@ -22,6 +23,14 @@
     url: https://download.docker.com/linux/ubuntu/gpg
     dest: /etc/apt/keyrings/docker.asc
     mode: '0644'
+  when: "'docker-ce' not in ansible_facts.packages"
+
+- name: Configure official Docker APT repository
+  ansible.builtin.apt_repository:
+    repo: "deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release | default('jammy') }} stable"
+    state: present
+    filename: docker
+    update_cache: yes
   when: "'docker-ce' not in ansible_facts.packages"
 
 - name: Install Docker Engine and Compose plugin
@@ -62,3 +71,4 @@
     groups: docker
     append: yes
   loop: "{{ docker_users }}"
+

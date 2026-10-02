@@ -332,6 +332,8 @@ pipeline {
                         echo 'Validating Ansible Playbook syntax...'
                         sh(
                             script: '''
+                                # Note: inventory/hosts.ini.example is used strictly for syntax checking in CI.
+                                # Live execution uses the git-ignored inventory/hosts.ini file.
                                 if command -v ansible-playbook >/dev/null 2>&1; then
                                     cd ansible && ANSIBLE_ROLES_PATH=roles ansible-playbook -i inventory/hosts.ini.example playbooks/site.yml --syntax-check
                                 else

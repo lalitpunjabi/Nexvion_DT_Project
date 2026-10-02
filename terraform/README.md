@@ -29,5 +29,9 @@ terraform validate
 terraform plan
 ```
 
-> [!NOTE]
-> Execution of `terraform plan` verifies native HCL import of existing resources (`Plan: 8 to import, 0 to add, 7 to change, 0 to destroy`), guaranteeing 0 resource replacements, 0 deletions, and 0 additions to the active EC2 server `i-057f6d6d0bbb33b37` and Elastic IP `52.66.25.69`.
+> [!IMPORTANT]
+> - Terraform uses native HCL `import` blocks to adopt and declaratively manage the existing AWS EC2 server (`i-057f6d6d0bbb33b37`) and Elastic IP (`52.66.25.69`).
+> - Run `terraform plan` locally and review the resulting import, change, replacement, and destroy counts before applying.
+> - No `terraform apply` should be executed automatically in Phase 3 CI/CD.
+> - The existing EC2 instance and Elastic IP allocation must be strictly preserved without replacement or destruction.
+
