@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nexvion-config
+  namespace: nexvion
+  labels:
+    app: nexvion-web
+    app.kubernetes.io/name: nexvion-web
+    app.kubernetes.io/part-of: nexvion-platform
+data:
+  APP_NAME: "nexvion-web"
+  ENVIRONMENT: "staging"
+  PORT: "80"
+  HEALTH_CHECK_PATH: "/healthz"
+  LOG_LEVEL: "info"

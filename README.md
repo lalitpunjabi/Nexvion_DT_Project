@@ -16,8 +16,9 @@
 │      IGW, Route Table, Security Group, EC2, Elastic IP, and EIP Association             │
 │    - Ansible Configuration (`ansible/`): System hardening, Docker Engine, Jenkins      │
 ├────────────────────────────────────────────────────────────────────────────────────────┤
-│ 4. FUTURE KUBERNETES & CLOUD PLATFORM (Phase 4 Target)                                 │
-│    - Amazon EKS + Helm Chart Rolling Updates with Immutable Git SHA Tags               │
+│ 4. KUBERNETES MANIFESTS PREPARED (Phase 4.1 Implemented)                               │
+│    - Production-ready manifests: Namespace, ConfigMap, Secret, Deployment, Service,    │
+│      Ingress, HPA (Validated via dry-run; ready for AWS EKS deployment in Phase 4.2)    │
 └────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -43,10 +44,18 @@
 
 ---
 
-## Phase 3 Overview: Infrastructure as Code & Configuration Management
-- **Terraform Infrastructure:** [`terraform/`](terraform/) adopts and declaratively manages existing AWS infrastructure: VPC (`vpc-09df3f5fdabdcf81f`), Subnet (`subnet-048f480df580a47f8`), Internet Gateway (`igw-045a89bde29483b3a`), Route Table (`rtb-0b5c00adb98133d97`), Security Group (`sg-0e2c619a238e449df`), EC2 instance `i-057f6d6d0bbb33b37` (Tag Name: `Nexvion`, `t3.small`), Elastic IP (`52.66.25.69`, `eipalloc-0662e014367e516bf`), and EIP Association (`eipassoc-0dfe320300f89e0da`).
-- **Ansible Server Configuration:** [`ansible/`](ansible/) playbooks and roles (`common`, `docker`, `jenkins`, `security`) automate system package management, Docker Engine setup, Jenkins LTS service, and server hardening (`sysctl`, UFW firewall).
-- **Detailed Architecture Specification:** See [`docs/phase-3.md`](docs/phase-3.md) for full IaC architecture, Ansible role specifications, and execution instructions.
+---
+
+## Phase 4.1 Overview: Kubernetes Manifest Preparation & Hardening
+- **Kubernetes Manifest Stack:** [`kubernetes/`](kubernetes/) provides declarative, production-ready manifests:
+  - [`namespace.yaml`](kubernetes/namespace.yaml): Isolated `nexvion` namespace.
+  - [`configmap.yaml`](kubernetes/configmap.yaml): Non-sensitive application runtime settings.
+  - [`secret.yaml`](kubernetes/secret.yaml): Safe placeholder structure for sensitive parameters.
+  - [`deployment.yaml`](kubernetes/deployment.yaml): 2-replica `nexvion-web` workload with RollingUpdate, UID 101 non-root security context, read-only root filesystem, `emptyDir` temp mounts, resource limits, and `/healthz` startup/liveness/readiness probes.
+  - [`service.yaml`](kubernetes/service.yaml): ClusterIP service `nexvion-web-service` exposing port 80.
+  - [`ingress.yaml`](kubernetes/ingress.yaml): NGINX Ingress controller configuration for `nexvion.example.com`.
+  - [`hpa.yaml`](kubernetes/hpa.yaml): HorizontalPodAutoscaler scaling 2–5 replicas based on a 70% CPU target.
+- **Detailed Specification:** See [`kubernetes/README.md`](kubernetes/README.md) for full manifest specifications and deployment instructions.
 
 ---
 
@@ -75,14 +84,17 @@ cd terraform && terraform fmt -check -recursive && terraform init && terraform v
 # 7. Validate Ansible Configuration Playbooks
 cd ansible && ansible-playbook -i inventory/hosts.ini playbooks/site.yml --syntax-check && cd ..
 
-# 8. Deploy Local Staging Stack
+# 8. Validate Kubernetes Manifest Syntax
+kubectl apply --dry-run=client -f kubernetes/
+
+# 9. Deploy Local Staging Stack
 docker compose up -d --force-recreate
 
-# 9. Verify Endpoint Health
+# 10. Verify Endpoint Health
 curl -i http://localhost:8081/healthz
 curl -i http://localhost:8081/
 
-# 10. Stop Container Stack (Optional Cleanup)
+# 11. Stop Container Stack (Optional Cleanup)
 docker compose down
 ```
 
