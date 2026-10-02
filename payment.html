@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Payment | NEXVION</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="payment.css">
+</head>
+
+<body class="payment-page">
+  <header class="payment-header">
+    <div class="payment-header-inner">
+      <a href="index.html" class="brand payment-brand">
+        <img src="logo.png" alt="NEXVION">
+      </a>
+
+      <a href="products.html" class="back-link">← Continue Shopping</a>
+    </div>
+  </header>
+
+  <main class="payment-main">
+    <div class="container">
+
+      <div class="payment-intro">
+        <p class="eyebrow">SECURE CHECKOUT</p>
+        <h1>Complete your <em>order.</em></h1>
+        <p>Enter your delivery details, choose a payment method and review your order.</p>
+      </div>
+
+      <div id="paymentEmpty" class="payment-empty hidden">
+        <div class="empty-symbol">×</div>
+        <h2>Your checkout is empty.</h2>
+        <p>Add products to your bag before opening the payment page.</p>
+        <a href="products.html" class="button button-dark">Go to Shop</a>
+      </div>
+
+      <div id="paymentContent" class="payment-layout">
+
+        <form id="paymentForm" class="payment-card" novalidate>
+
+          <section class="checkout-section">
+            <div class="step">01</div>
+
+            <div>
+              <p class="eyebrow">DELIVERY</p>
+              <h2>Delivery details</h2>
+              <p class="muted">We'll use these details to deliver your order.</p>
+
+              <div class="form-grid">
+                <label>Full Name
+                  <input id="customerName" type="text" autocomplete="name" required placeholder="Your full name">
+                  <small id="nameError" class="error"></small>
+                </label>
+
+                <label>Mobile Number
+                  <input id="customerPhone" type="tel" inputmode="numeric" maxlength="10" autocomplete="tel" required placeholder="10-digit number">
+                  <small class="hint">Digits only</small>
+                  <small id="phoneError" class="error"></small>
+                </label>
+
+                <label class="wide">Delivery Address
+                  <textarea id="customerAddress" rows="3" autocomplete="street-address" required placeholder="House / Flat / Street / Area"></textarea>
+                  <small id="addressError" class="error"></small>
+                </label>
+
+                <label>City
+                  <input id="customerCity" type="text" autocomplete="address-level2" required placeholder="City">
+                  <small id="cityError" class="error"></small>
+                </label>
+
+                <label>PIN Code
+                  <input id="customerPin" type="text" inputmode="numeric" maxlength="6" autocomplete="postal-code" required placeholder="6-digit PIN">
+                  <small class="hint">Digits only</small>
+                  <small id="pinError" class="error"></small>
+                </label>
+              </div>
+            </div>
+          </section>
+
+          <section class="checkout-section">
+            <div class="step">02</div>
+
+            <div>
+              <p class="eyebrow">PAYMENT</p>
+              <h2>Choose payment method</h2>
+              <p class="muted">Select one option below.</p>
+
+              <div class="payment-methods">
+                <label class="method active">
+                  <input type="radio" name="paymentMethod" value="upi" checked>
+                  <span class="method-icon">↗</span>
+                  <span>
+                    <strong>UPI</strong>
+                    <small>Pay with your UPI ID</small>
+                  </span>
+                  <i></i>
+                </label>
+
+                <label class="method">
+                  <input type="radio" name="paymentMethod" value="card">
+                  <span class="method-icon">▣</span>
+                  <span>
+                    <strong>Credit / Debit Card</strong>
+                    <small>Visa, Mastercard and other cards</small>
+                  </span>
+                  <i></i>
+                </label>
+
+                <label class="method">
+                  <input type="radio" name="paymentMethod" value="cod">
+                  <span class="method-icon">₹</span>
+                  <span>
+                    <strong>Cash on Delivery</strong>
+                    <small>Pay when your order arrives</small>
+                  </span>
+                  <i></i>
+                </label>
+              </div>
+
+              <div id="upiFields" class="payment-extra">
+                <label>UPI ID
+                  <input id="upiId" type="text" placeholder="example@upi" autocomplete="off">
+                  <small id="upiError" class="error"></small>
+                </label>
+              </div>
+
+              <div id="cardFields" class="payment-extra hidden">
+                <div class="form-grid">
+                  <label class="wide">Card Number
+                    <input id="cardNumber" type="text" inputmode="numeric" maxlength="19" placeholder="1234 5678 9012 3456" autocomplete="cc-number">
+                    <small id="cardNumberError" class="error"></small>
+                  </label>
+
+                  <label>Name on Card
+                    <input id="cardName" type="text" autocomplete="cc-name" placeholder="Cardholder name">
+                    <small id="cardNameError" class="error"></small>
+                  </label>
+
+                  <label>Expiry
+                    <input id="cardExpiry" type="text" inputmode="numeric" maxlength="5" placeholder="MM/YY" autocomplete="cc-exp">
+                    <small id="cardExpiryError" class="error"></small>
+                  </label>
+
+                  <label>CVV
+                    <input id="cardCvv" type="password" inputmode="numeric" maxlength="3" placeholder="123" autocomplete="cc-csc">
+                    <small id="cardCvvError" class="error"></small>
+                  </label>
+                </div>
+              </div>
+
+              <div id="codFields" class="cod-box hidden">
+                <strong>Cash on Delivery</strong>
+                <p>Pay the delivery partner when your order arrives.</p>
+              </div>
+            </div>
+          </section>
+
+          <div class="secure-box">
+            <span>✓</span>
+            <div>
+              <strong>Secure checkout</strong>
+              <small>This is a frontend demo. Connect a real payment gateway before accepting live payments.</small>
+            </div>
+          </div>
+
+          <button class="button button-dark full pay-button" type="submit">
+            Place Order
+          </button>
+        </form>
+
+        <aside class="order-card">
+          <div class="order-card-header">
+            <p class="eyebrow">YOUR BAG</p>
+            <h2>Order Summary</h2>
+          </div>
+
+          <div id="orderItems" class="order-items"></div>
+
+          <div class="summary-lines">
+            <div><span>Subtotal</span><strong id="summarySubtotal">₹0</strong></div>
+            <div><span>Delivery</span><strong>FREE</strong></div>
+            <div class="grand-total"><span>Total</span><strong id="summaryTotal">₹0</strong></div>
+          </div>
+
+          <div class="signed-user">
+            <small>Signed in as</small>
+            <strong id="summaryUser">Customer</strong>
+          </div>
+        </aside>
+
+      </div>
+    </div>
+  </main>
+
+  <div class="success-overlay hidden" id="paymentSuccess">
+    <div class="success-card">
+      <div class="success-icon">✓</div>
+      <p class="eyebrow">ORDER CONFIRMED</p>
+      <h2>Your order is on its way.</h2>
+      <p>Thank you for shopping with NEXVION.</p>
+      <strong id="successOrderNumber">Order #NX000000</strong>
+      <a href="products.html" class="button button-dark">Continue Shopping</a>
+    </div>
+  </div>
+
+  <script src="payment.js"></script>
+</body>
+</html>

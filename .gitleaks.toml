@@ -1,0 +1,39 @@
+title = "Nexvion DevSecOps GitLeaks Secret Scanning Configuration"
+
+# Strict scan policy: No broad file/folder exclusions. All source code, configs,
+# and documentation files are scanned for leaked secrets.
+
+# Rule 1: AWS Access Key ID
+[[rules]]
+id = "aws-access-key-id"
+description = "Detected AWS Access Key ID"
+regex = '''(?i)(aws_access_key_id|aws_key_id|aws_key)\s*[:=]\s*['"]?(AKIA[0-9A-Z]{16})['"]?'''
+keywords = ["AKIA", "aws_access_key_id"]
+
+# Rule 2: AWS Secret Access Key
+[[rules]]
+id = "aws-secret-access-key"
+description = "Detected AWS Secret Access Key"
+regex = '''(?i)(aws_secret_access_key|aws_secret_key|aws_secret)\s*[:=]\s*['"]?([A-Za-z0-9/+=]{40})['"]?'''
+keywords = ["aws_secret_access_key"]
+
+# Rule 3: Generic API Key / Token
+[[rules]]
+id = "generic-api-key"
+description = "Detected Generic API Key or Auth Token"
+regex = '''(?i)(api_key|apikey|secret_key|auth_token|access_token|private_key)\s*[:=]\s*['"]?([A-Za-z0-9_\-]{20,})['"]?'''
+keywords = ["api_key", "apikey", "secret_key", "auth_token", "access_token"]
+
+# Rule 4: RSA / SSH Private Key Header
+[[rules]]
+id = "private-key"
+description = "Detected Private SSH/RSA Key Header"
+regex = '''-----BEGIN (RSA|OPENSSH|DSA|EC|PGP) PRIVATE KEY-----'''
+keywords = ["BEGIN PRIVATE KEY"]
+
+# Rule 5: GitHub Personal Access Token
+[[rules]]
+id = "github-pat"
+description = "Detected GitHub Personal Access Token"
+regex = '''ghp_[0-9a-zA-Z]{36}'''
+keywords = ["ghp_"]

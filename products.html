@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shop | NEXVION</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="products.css">
+</head>
+
+<body>
+  <div id="toast" class="toast"></div>
+
+  <header class="header">
+    <div class="container navbar">
+      <a href="index.html" class="brand" aria-label="NEXVION Home">
+        <img src="logo.png" alt="NEXVION" class="site-logo">
+      </a>
+
+      <nav class="desktop-nav" aria-label="Primary navigation">
+        <a href="index.html">Home</a>
+        <a href="products.html" class="active">Shop</a>
+        <a href="index.html#categories">Categories</a>
+        <a href="index.html#about">About</a>
+      </nav>
+
+      <div class="nav-actions">
+        <button class="icon-button" id="searchButton" aria-label="Search">⌕</button>
+
+        <button class="bag-button" id="cartButton">
+          Bag <span id="cartCount">0</span>
+        </button>
+
+        <div id="authArea"></div>
+
+        <button class="mobile-menu-button" id="mobileMenuButton" aria-label="Open menu">☰</button>
+      </div>
+    </div>
+
+    <div class="mobile-menu" id="mobileMenu">
+      <a href="index.html">Home</a>
+      <a href="products.html">Shop</a>
+      <a href="index.html#categories">Categories</a>
+      <a href="index.html#about">About</a>
+    </div>
+  </header>
+
+  <main>
+    <section class="shop-hero">
+      <div class="container">
+        <p class="eyebrow">THE COMPLETE COLLECTION</p>
+        <h1>Find something<br><em>you'll love.</em></h1>
+        <p>Browse all NEXVION products with category, price and availability filters.</p>
+      </div>
+    </section>
+
+    <section class="shop-section">
+      <div class="container shop-layout">
+
+        <aside class="filters" id="filters">
+          <div class="filter-title">
+            <h2>Filters</h2>
+            <button id="clearFilters">Clear all</button>
+          </div>
+
+          <div class="filter-group">
+            <h3>Category</h3>
+            <div id="categoryFilters" class="category-list"></div>
+          </div>
+
+          <div class="filter-group">
+            <div class="filter-heading-row">
+              <h3>Maximum Price</h3>
+              <strong id="maxPriceLabel">₹5,000+</strong>
+            </div>
+
+            <input id="priceRange" type="range" min="500" max="5000" step="100" value="5000">
+            <div class="range-labels"><span>₹500</span><span>₹5,000+</span></div>
+          </div>
+
+          <div class="filter-group">
+            <label class="stock-check">
+              <input type="checkbox" id="inStock">
+              <span>Only show products in stock</span>
+            </label>
+          </div>
+
+          <div class="filter-promo">
+            <span>NEXVION BENEFIT</span>
+            <strong>Free shipping over ₹2,999</strong>
+            <small>Applied automatically at checkout.</small>
+          </div>
+        </aside>
+
+        <div class="shop-content">
+          <div class="shop-toolbar">
+            <div>
+              <p class="eyebrow">SHOP</p>
+              <strong id="resultCount">12 products</strong>
+            </div>
+
+            <div class="toolbar-right">
+              <button class="filter-mobile-button" id="mobileFilterButton">☷ Filters</button>
+
+              <select id="sortProducts" aria-label="Sort products">
+                <option value="featured">Featured</option>
+                <option value="low">Price: Low to High</option>
+                <option value="high">Price: High to Low</option>
+                <option value="name">Name: A to Z</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="shop-product-grid" id="shopProductGrid"></div>
+
+          <div class="empty-products" id="emptyProducts">
+            <div>×</div>
+            <h2>No products found.</h2>
+            <p>Try another category, price range or search term.</p>
+            <button class="button button-dark" id="emptyClear">Clear Filters</button>
+          </div>
+        </div>
+
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="container footer-grid">
+      <div class="footer-brand">
+        <a href="index.html" class="brand footer-logo"><img src="logo.png" alt="NEXVION"></a>
+        <p>Modern essentials for everyday living.</p>
+      </div>
+
+      <div class="footer-links">
+        <strong>Explore</strong>
+        <a href="products.html">Shop</a>
+        <a href="index.html#categories">Categories</a>
+        <a href="index.html#about">About</a>
+      </div>
+
+      <div class="footer-links">
+        <strong>Support</strong>
+        <a href="payment.html">Payment</a>
+        <a href="#">Shipping</a>
+        <a href="#">Returns</a>
+      </div>
+    </div>
+    <div class="copyright">© 2026 NEXVION. All rights reserved.</div>
+  </footer>
+
+  <!-- AUTH -->
+  <div class="modal" id="authModal" aria-hidden="true">
+    <div class="modal-backdrop" data-close-auth></div>
+
+    <div class="auth-modal">
+      <button class="modal-close" data-close-auth>×</button>
+
+      <div class="auth-brand">
+        <img src="logo.png" alt="NEXVION">
+      </div>
+
+      <div class="auth-tabs">
+        <button class="auth-tab active" data-auth-tab="login">Sign In</button>
+        <button class="auth-tab" data-auth-tab="register">Create Account</button>
+      </div>
+
+      <form id="loginForm" class="auth-form">
+        <p class="eyebrow">WELCOME BACK</p>
+        <h2>Sign in to NEXVION.</h2>
+        <p class="form-intro">Access your account and continue shopping.</p>
+
+        <label>Email Address
+          <input id="loginEmail" type="email" placeholder="you@example.com" autocomplete="email" required>
+        </label>
+
+        <label>Password
+          <input id="loginPassword" type="password" placeholder="Enter password" autocomplete="current-password" required>
+        </label>
+
+        <button type="submit" class="button button-dark full">Sign In</button>
+
+        <p class="switch-text">Don't have an account? <button type="button" data-switch-auth="register">Create one</button></p>
+      </form>
+
+      <form id="registerForm" class="auth-form hidden">
+        <p class="eyebrow">JOIN NEXVION</p>
+        <h2>Create your account.</h2>
+        <p class="form-intro">Your account is saved locally in this browser.</p>
+
+        <label>Full Name
+          <input id="registerName" type="text" placeholder="Your full name" autocomplete="name" required>
+        </label>
+
+        <label>Email Address
+          <input id="registerEmail" type="email" placeholder="you@example.com" autocomplete="email" required>
+        </label>
+
+        <label>Password
+          <input id="registerPassword" type="password" placeholder="Minimum 6 characters" minlength="6" autocomplete="new-password" required>
+        </label>
+
+        <label>Confirm Password
+          <input id="registerConfirmPassword" type="password" placeholder="Repeat password" minlength="6" autocomplete="new-password" required>
+        </label>
+
+        <button type="submit" class="button button-dark full">Create Account</button>
+
+        <p class="switch-text">Already registered? <button type="button" data-switch-auth="login">Sign in</button></p>
+      </form>
+    </div>
+  </div>
+
+  <!-- CART -->
+  <div class="drawer-overlay" id="drawerOverlay"></div>
+
+  <aside class="cart-drawer" id="cartDrawer">
+    <div class="drawer-header">
+      <div>
+        <p class="eyebrow">NEXVION</p>
+        <h2>Your Bag</h2>
+      </div>
+      <button class="modal-close" id="closeCart">×</button>
+    </div>
+
+    <div class="cart-items" id="cartItems"></div>
+
+    <div class="cart-bottom">
+      <div class="cart-total-row">
+        <span>Subtotal</span>
+        <strong id="subtotal">₹0</strong>
+      </div>
+      <p class="cart-note">Free shipping on orders over ₹2,999.</p>
+      <button class="button button-dark full" id="checkoutButton">Proceed to Checkout</button>
+    </div>
+  </aside>
+
+  <!-- SEARCH -->
+  <div class="search-overlay" id="searchOverlay">
+    <div class="search-box">
+      <div class="search-top">
+        <p class="eyebrow">SEARCH NEXVION</p>
+        <button class="modal-close" id="closeSearch">×</button>
+      </div>
+      <input id="searchInput" type="search" placeholder="Search products...">
+      <p>Search by product name.</p>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
