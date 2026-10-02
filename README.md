@@ -88,10 +88,17 @@ docker compose down
 
 ---
 
-### Required Jenkins Credentials
+### Jenkins Credentials
 
-| Credential ID | Type | Description | Target Stage |
+The current Phase 2 default pipeline uses:
+
+- `REGISTRY_TYPE=LOCAL_ONLY`
+- `PUSH_TO_REGISTRY=false`
+
+Therefore, external registry credentials are NOT required for the default staging pipeline.
+
+| Credential ID | Type | Status | Usage |
 | :--- | :--- | :--- | :--- |
-| `ecr-credentials` | Username with Password | Temporary Phase 2 fallback AWS credentials (Replaced by IAM Roles in Future Phase 4) | Stage 6: Registry Push |
-| `docker-registry-credentials` | Username with Password | Docker Hub Username & Access Token (Optional) | Stage 6: Registry Push |
-| `github-webhook-secret` | Secret text | Shared secret token for GitHub webhook payloads | SCM Trigger |
+| `docker-registry-credentials` | Username with Password | Optional | Docker Hub push when explicitly enabled |
+| `github-webhook-secret` | Secret text | Optional | GitHub webhook authentication |
+| `ecr-credentials` | Username with Password | Future/Optional | Only required if AWS ECR registry push is explicitly enabled |

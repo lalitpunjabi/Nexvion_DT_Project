@@ -89,7 +89,7 @@ This pipeline architecture establishes three distinct operational scopes:
 
 ---
 
-## Required Jenkins Credentials
+## Jenkins Credentials
 
 | Credential ID | Credential Type | Usage & Description |
 | :--- | :--- | :--- |
