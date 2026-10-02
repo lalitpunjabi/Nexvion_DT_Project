@@ -1,40 +1,18 @@
 // ==============================================================================
-// Nexvion E-Commerce Workload — Phase 2 CI/CD Pipeline
+// Nexvion E-Commerce Workload — Enterprise CI/CD Pipeline
 //
-// Target:
-//   Single Linux EC2 instance running Jenkins + Docker
+// Lifecycle Environment Scopes:
+//   Phase 2 (Active CI/CD Pipeline):
+//     Declarative Jenkinsfile pipeline targeting Linux Agent ('linux')
+//     Automated Gates: Checkout ➔ Validate ➔ GitLeaks ➔ Docker Build ➔ Trivy ➔ Staging Deployment ➔ Health Check
+//   Phase 3 (Infrastructure as Code & Configuration Management):
+//     Terraform infrastructure adoption & Ansible server hardening (CLI validated independently)
+//   Phase 4 (Cloud-Native Platform):
+//     Amazon EKS + Helm Chart Rolling Updates (Future Production Target)
 //
-// Deployment:
-//   Docker Compose staging on the same EC2
-//
-// Security:
-//   GitLeaks v8.28.0
-//   Trivy 0.60.0
-//
-// Phase 2 ONLY:
-//   - No Terraform
-//   - No Ansible
-//   - No Kubernetes
-//   - No Helm
-//   - No ECR required
-//   - No permanent AWS credentials required
-//
-// Pipeline:
-//   Checkout
-//      ↓
-//   Validate
-//      ↓
-//   GitLeaks
-//      ↓
-//   Docker Build
-//      ↓
-//   Trivy
-//      ↓
-//   Registry Push (SKIPPED in Phase 2)
-//      ↓
-//   Staging Deployment
-//      ↓
-//   Health Check
+// Target Agent: Linux EC2 Environment (Ubuntu 22.04 LTS)
+// Security Scanning: GitLeaks v8.28.0 & Trivy 0.60.0
+// Deployment Target: Local Docker Compose (Port 8081:80)
 // ==============================================================================
 
 

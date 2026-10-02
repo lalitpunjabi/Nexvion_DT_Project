@@ -142,7 +142,6 @@ resource "aws_instance" "nexvion_server" {
 
   lifecycle {
     ignore_changes = [
-      ami,
       user_data,
       user_data_base64
     ]

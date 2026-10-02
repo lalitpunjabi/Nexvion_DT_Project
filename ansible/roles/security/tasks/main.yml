@@ -15,17 +15,21 @@
     state: present
     reload: yes
 
+- name: Allow SSH port 22 in UFW before enabling firewall
+  community.general.ufw:
+    rule: allow
+    port: '22'
+    proto: tcp
+
 - name: Configure UFW firewall default incoming policy
   community.general.ufw:
     direction: incoming
     policy: deny
-  ignore_errors: true
 
 - name: Configure UFW firewall default outgoing policy
   community.general.ufw:
     direction: outgoing
     policy: allow
-  ignore_errors: true
 
 - name: Allow required application and management ports in UFW
   community.general.ufw:
@@ -33,9 +37,7 @@
     port: "{{ item }}"
     proto: tcp
   loop: "{{ allowed_tcp_ports }}"
-  ignore_errors: true
 
 - name: Enable UFW firewall service
   community.general.ufw:
     state: enabled
-  ignore_errors: true
