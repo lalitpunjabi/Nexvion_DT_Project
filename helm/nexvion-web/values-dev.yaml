@@ -1,0 +1,27 @@
+# Development / Local Minikube Overrides for nexvion-web Helm Chart
+
+namespace: nexvion
+
+replicaCount: 2
+
+image:
+  repository: nexvion-web
+  tag: v1.0.0
+  pullPolicy: IfNotPresent
+
+config:
+  environment: "development"
+  logLevel: "debug"
+
+ingress:
+  enabled: true
+  className: nginx
+  host: nexvion.example.com
+  path: /
+  pathType: Prefix
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 70

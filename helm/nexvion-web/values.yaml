@@ -1,0 +1,89 @@
+# Centralized Configuration Values for nexvion-web Helm Chart
+
+namespace: nexvion
+
+replicaCount: 2
+
+image:
+  repository: nexvion-web
+  tag: v1.0.0
+  pullPolicy: IfNotPresent
+
+containerPort: 80
+
+config:
+  appName: "nexvion-web"
+  environment: "staging"
+  logLevel: "info"
+  healthCheckPath: "/healthz"
+
+secrets:
+  apiKeyPlaceholder: "example-api-key-placeholder"
+  sessionSecretPlaceholder: "example-session-secret-placeholder"
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 80
+
+ingress:
+  enabled: true
+  className: nginx
+  host: nexvion.example.com
+  path: /
+  pathType: Prefix
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 70
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 200m
+    memory: 128Mi
+
+healthCheck:
+  path: /healthz
+
+probes:
+  startup:
+    initialDelaySeconds: 3
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 10
+  liveness:
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 3
+    failureThreshold: 3
+  readiness:
+    initialDelaySeconds: 3
+    periodSeconds: 5
+    timeoutSeconds: 3
+    successThreshold: 1
+    failureThreshold: 3
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 101
+  runAsGroup: 101
+  fsGroup: 101
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  runAsUser: 101
+  runAsGroup: 101
+  capabilities:
+    drop:
+      - ALL
+    add:
+      - NET_BIND_SERVICE

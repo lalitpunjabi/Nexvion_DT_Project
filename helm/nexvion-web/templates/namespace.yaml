@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ .Values.namespace | default "nexvion" }}
+  labels:
+    name: {{ .Values.namespace | default "nexvion" }}
+    {{- include "nexvion-web.labels" . | nindent 4 }}

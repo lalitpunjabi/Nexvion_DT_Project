@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "nexvion-web.fullname" . }}-service
+  namespace: {{ .Values.namespace | default "nexvion" }}
+  labels:
+    {{- include "nexvion-web.labels" . | nindent 4 }}
+    app.kubernetes.io/component: service
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - name: http
+      port: {{ .Values.service.port }}
+      targetPort: {{ .Values.service.targetPort }}
+      protocol: TCP
+  selector:
+    {{- include "nexvion-web.selectorLabels" . | nindent 4 }}

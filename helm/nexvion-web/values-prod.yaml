@@ -1,0 +1,39 @@
+# Production AWS EKS Overrides for nexvion-web Helm Chart
+# IMPORTANT: ECR repository URI and Git SHA tag will be supplied dynamically during Phase 4.4 / EKS deployment.
+
+namespace: nexvion
+
+replicaCount: 2
+
+image:
+  # Placeholder for AWS ECR repository URI: <aws-account-id>.dkr.ecr.<aws-region>.amazonaws.com/nexvion-web
+  repository: "<aws-account-id>.dkr.ecr.<aws-region>.amazonaws.com/nexvion-web"
+  # Placeholder for immutable Git SHA commit tag (e.g., a1b2c3d)
+  tag: "<git-sha>"
+  pullPolicy: Always
+
+config:
+  environment: "production"
+  logLevel: "warn"
+
+ingress:
+  enabled: true
+  # In production EKS, update className to "alb" or "nginx" as per the active cluster ingress controller.
+  className: nginx
+  host: nexvion.example.com
+  path: /
+  pathType: Prefix
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 70
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi

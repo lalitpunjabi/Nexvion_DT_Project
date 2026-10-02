@@ -16,9 +16,11 @@
 │      IGW, Route Table, Security Group, EC2, Elastic IP, and EIP Association             │
 │    - Ansible Configuration (`ansible/`): System hardening, Docker Engine, Jenkins      │
 ├────────────────────────────────────────────────────────────────────────────────────────┤
-│ 4. KUBERNETES MANIFESTS PREPARED (Phase 4.1 Implemented)                               │
-│    - Production-ready manifests: Namespace, ConfigMap, Secret, Deployment, Service,    │
-│      Ingress, HPA (Validated via dry-run; ready for AWS EKS deployment in Phase 4.2)    │
+│ 4. KUBERNETES & HELM PLATFORM PACKAGING (Phase 4.1 & 4.2 Implemented)                   │
+│    - Phase 4.1 Raw Manifests (`kubernetes/`): Namespace, ConfigMap, Secret,            │
+│      Deployment, Service, Ingress, HPA (Validated on Minikube)                          │
+│    - Phase 4.2 Helm Packaging (`helm/nexvion-web/`): Templated Helm 3 Chart with      │
+│      values-dev.yaml & values-prod.yaml (Verified deployed & running on Minikube)      │
 └────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -46,16 +48,21 @@
 
 ---
 
-## Phase 4.1 Overview: Kubernetes Manifest Preparation & Hardening
-- **Kubernetes Manifest Stack:** [`kubernetes/`](kubernetes/) provides declarative, production-ready manifests:
-  - [`namespace.yaml`](kubernetes/namespace.yaml): Isolated `nexvion` namespace.
-  - [`configmap.yaml`](kubernetes/configmap.yaml): Non-sensitive application runtime settings.
-  - [`secret.yaml`](kubernetes/secret.yaml): Safe placeholder structure for sensitive parameters.
-  - [`deployment.yaml`](kubernetes/deployment.yaml): 2-replica `nexvion-web` workload with RollingUpdate, UID 101 non-root security context, read-only root filesystem, `emptyDir` temp mounts, resource limits, and `/healthz` startup/liveness/readiness probes.
-  - [`service.yaml`](kubernetes/service.yaml): ClusterIP service `nexvion-web-service` exposing port 80.
-  - [`ingress.yaml`](kubernetes/ingress.yaml): NGINX Ingress controller configuration for `nexvion.example.com`.
-  - [`hpa.yaml`](kubernetes/hpa.yaml): HorizontalPodAutoscaler scaling 2–5 replicas based on a 70% CPU target.
-- **Detailed Specification:** See [`kubernetes/README.md`](kubernetes/README.md) for full manifest specifications and deployment instructions.
+## Phase 4.1 Overview: Raw Kubernetes Manifests
+- **Kubernetes Manifest Stack:** [`kubernetes/`](kubernetes/) provides baseline, production-ready manifests (`namespace.yaml`, `configmap.yaml`, `secret.yaml`, `deployment.yaml`, `service.yaml`, `ingress.yaml`, `hpa.yaml`).
+- **Detailed Specification:** See [`kubernetes/README.md`](kubernetes/README.md).
+
+---
+
+## Phase 4.2 Overview: Helm Chart Packaging
+- **Helm Chart Structure:** [`helm/nexvion-web/`](helm/nexvion-web/) encapsulates the Kubernetes manifests into a modular, reusable Helm 3 chart:
+  - `Chart.yaml`: Metadata (name: `nexvion-web`, version: `0.1.0`, appVersion: `1.0.0`).
+  - `values.yaml`: Centralized default values and container hardening specs.
+  - `values-dev.yaml`: Local development overrides targeting Minikube image `nexvion-web:v1.0.0`.
+  - `values-prod.yaml`: EKS production overrides targeting ECR repository placeholders and Git SHA tags.
+  - `templates/_helpers.tpl`: Standard Helm label, naming, and selector helpers.
+  - `templates/`: Parameterized templates for Namespace, ConfigMap, Secret, Deployment, Service, Ingress, and HPA.
+- **Detailed Specification:** See [`helm/nexvion-web/README.md`](helm/nexvion-web/README.md).
 
 ---
 
@@ -87,10 +94,17 @@ cd ansible && ansible-playbook -i inventory/hosts.ini playbooks/site.yml --synta
 # 8. Validate Kubernetes Manifest Syntax
 kubectl apply --dry-run=client -f kubernetes/
 
-# 9. Deploy Local Staging Stack
+# 9. Lint & Render Helm Chart
+helm lint helm/nexvion-web
+helm template nexvion-web helm/nexvion-web -f helm/nexvion-web/values-dev.yaml
+
+# 10. Install Helm Release on Minikube
+helm install nexvion-web helm/nexvion-web -f helm/nexvion-web/values-dev.yaml --namespace nexvion --create-namespace
+
+# 11. Deploy Local Staging Stack (Docker Compose)
 docker compose up -d --force-recreate
 
-# 10. Verify Endpoint Health
+# 12. Verify Endpoint Health
 curl -i http://localhost:8081/healthz
 curl -i http://localhost:8081/
 

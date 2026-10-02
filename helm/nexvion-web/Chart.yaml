@@ -1,0 +1,8 @@
+apiVersion: v2
+name: nexvion-web
+description: Helm chart for Nexvion AI-Powered E-Commerce Containerized Frontend Workload
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+maintainers:
+  - name: Nexvion DevOps Team
