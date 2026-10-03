@@ -6,9 +6,9 @@ namespace: nexvion
 replicaCount: 2
 
 image:
-  # Placeholder for AWS ECR repository URI: <aws-account-id>.dkr.ecr.<aws-region>.amazonaws.com/nexvion-web
-  repository: "<aws-account-id>.dkr.ecr.<aws-region>.amazonaws.com/nexvion-web"
-  # Placeholder for immutable Git SHA commit tag (e.g., a1b2c3d)
+  # Real AWS ECR repository URI created in Phase 4.3
+  repository: "677012863109.dkr.ecr.ap-south-1.amazonaws.com/nexvion-web"
+  # Dynamic Git SHA commit tag (supplied at deploy time via --set image.tag=${GIT_SHA})
   tag: "<git-sha>"
   pullPolicy: Always
 

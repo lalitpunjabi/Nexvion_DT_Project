@@ -102,7 +102,7 @@ resource "aws_ecr_lifecycle_policy" "nexvion" {
    ```bash
    aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin 677012863109.dkr.ecr.ap-south-1.amazonaws.com
    ```
-3. **Jenkins Server Authentication:** In production, the Jenkins EC2 instance (`i-057f6d6d0bbb33b37`) utilizes an IAM Instance Profile containing `AmazonEC2ContainerRegistryPowerUser` permissions, eliminating local credential handling entirely.
+3. **Jenkins Server Authentication:** In the current staging setup, Jenkins authenticates using short-lived tokens generated via AWS CLI (`aws ecr get-login-password`). In a production deployment, attaching an IAM Instance Profile containing `AmazonEC2ContainerRegistryPowerUser` to the Jenkins EC2 instance (`i-057f6d6d0bbb33b37`) eliminates credential management on the runner.
 
 ---
 
