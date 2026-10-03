@@ -16,7 +16,7 @@
 │      IGW, Route Table, Security Group, EC2, Elastic IP, and EIP Association             │
 │    - Ansible Configuration (`ansible/`): System hardening, Docker Engine, Jenkins      │
 ├────────────────────────────────────────────────────────────────────────────────────────┤
-│ 4. KUBERNETES, HELM, ECR, EKS & WORKLOAD DEPLOYMENT (Phase 4.1 - 4.5 Implemented)      │
+│ 4. KUBERNETES, HELM, ECR, EKS & WORKLOAD DEPLOYMENT (Phase 4.1 - 4.6 Implemented)      │
 │    - Phase 4.1 Raw Manifests (`kubernetes/`): Namespace, ConfigMap, Secret,            │
 │      Deployment, Service, Ingress, HPA (Validated on Minikube)                          │
 │    - Phase 4.2 Helm Packaging (`helm/nexvion-web/`): Templated Helm 3 Chart with      │
@@ -27,6 +27,8 @@
 │      `nexvion-eks` (v1.36), managed node group (t3.small), IAM roles, multi-AZ         │
 │    - Phase 4.5 EKS Workload Deployment (`helm/nexvion-web/`): Helm release deployed to  │
 │      EKS pulling ECR image `0d575d0` (2/2 Ready pods, ClusterIP Service, health 200)   │
+│    - Phase 4.6 Metrics, HPA & Ingress (`ingress-nginx`): Metrics Server running,       │
+│      active CPU HPA metric calculation, and cost-conscious NodePort ingress routing     │
 └────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -104,6 +106,15 @@
 - **Secret Management Status:** Kubernetes Secret contains **placeholder values only** (`API_KEY_PLACEHOLDER`, `SESSION_SECRET_PLACEHOLDER`) and is not production secret management (AWS Secrets Manager / ESO deferred).
 - **Application Endpoint Validation:** Internal HTTP validation via ClusterIP verified `/healthz` (200 OK), `/` (200 OK), `products.html` (200 OK), and `payment.html` (200 OK).
 - **Detailed Specification:** See [`docs/phase-4.5-eks-deployment.md`](docs/phase-4.5-eks-deployment.md).
+
+---
+
+## Phase 4.6 Overview: EKS Observability Metrics, HPA Validation & Ingress External Access
+- **Metrics Server Installed:** `metrics-server` deployed to `kube-system` namespace. Verified `kubectl top nodes` (`32m` CPU / `50%` RAM) and `kubectl top pods -n nexvion` (`1m` CPU per pod).
+- **Active HPA Metric Validation:** `horizontalpodautoscaler/nexvion-web-hpa` active with real CPU metric calculation (`cpu: 1%/70%`, `ScalingActive = True`). Controlled CPU load test validated replica calculations.
+- **Cost-Conscious Ingress Controller:** Installed `ingress-nginx` controller (v1.15.1) configured with `type: NodePort` (HTTP Port `31449`), avoiding $18.00+/mo billable AWS Load Balancers ($0.00 extra AWS cost).
+- **Ingress Endpoint Routing Verified:** `ingress.networking.k8s.io/nexvion-web-ingress` dynamically assigned address `10.100.51.190`. Validated 200 OK responses for `/healthz`, `/`, `products.html`, and `payment.html`.
+- **Detailed Specification:** See [`docs/phase-4-6-metrics-hpa-external-access.md`](docs/phase-4-6-metrics-hpa-external-access.md).
 
 ---
 
