@@ -62,9 +62,9 @@ variable "eks_cluster_name" {
 }
 
 variable "eks_cluster_version" {
-  description = "Kubernetes control plane version for EKS (1.32 standard support in 2026)"
+  description = "Kubernetes control plane version for EKS (1.36 Standard Support)"
   type        = string
-  default     = "1.32"
+  default     = "1.36"
 }
 
 variable "eks_subnet_cidr_a" {

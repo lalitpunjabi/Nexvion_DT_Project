@@ -11,8 +11,8 @@ This architecture safely extends the existing Nexvion AWS environment without mo
 > 
 > This configuration is structured as a **COST-CONSTRAINED STAGING / LAB ARCHITECTURE** for internship and development testing.
 >
-> 1. **EKS Control Plane is NOT FREE:** AWS charges **$0.10 per hour (~$73.00/month)** for the EKS control plane (`aws_eks_cluster.nexvion`). It is **NOT** covered by the AWS Free Tier.
-> 2. **Kubernetes Version Selection:** Configured with Kubernetes **1.32** (Standard Support in 2026). Standard Support avoids AWS Extended Support surcharges ($0.60/hr extra charged for deprecated K8s releases).
+> 1. **EKS Control Plane Charges:** AWS charges **$0.10 per hour (~$73.00/month)** for the EKS control plane (`aws_eks_cluster.nexvion`). The EKS control plane is **NOT** covered by the AWS Free Tier.
+> 2. **Kubernetes Version & Extended Support Surcharge Avoidance:** Configured with Kubernetes **1.36** (Standard Support). Standard Support avoids AWS Extended Support surcharges ($0.60/hr extra charged for deprecated/extended releases such as 1.31, 1.32, and 1.33).
 > 3. **Account-Specific Eligibility:** Service items below are marked as *potentially billable; verify current account-specific Free Tier eligibility*.
 > 4. **Zero Automatic Apply:** `terraform apply` is **NOT** run automatically. To prevent unexpected AWS bills, the cluster should only be provisioned on-demand when actively testing.
 > 5. **Safe Cleanup Procedure:** Never run a blind `terraform destroy` without target flags, as doing so would destroy your imported shared infrastructure. Follow the safe targeted cleanup procedure below.
@@ -41,18 +41,33 @@ This architecture safely extends the existing Nexvion AWS environment without mo
 |                                 +----------------------------------+                                                    |
 |                                 | Amazon EKS Control Plane         |                                                    |
 |                                 | Cluster Name: nexvion-eks        |                                                    |
-|                                 | Kubernetes Version: 1.32         |                                                    |
+|                                 | Kubernetes Version: 1.34         |                                                    |
 |                                 +----------------------------------+                                                    |
 +-------------------------------------------------------------------------------------------------------------------------+
 ```
 
 ---
 
-## 1. Detailed Cost Analysis & Free Tier Classification
+## 1. Kubernetes Version & Support Status
+
+- **Selected Kubernetes Version:** `1.36`
+- **AWS EKS Support Status:** **Standard Support**
+- **Support Status Breakdown:**
+  - `1.36` — Standard Support
+  - `1.35` — Standard Support
+  - `1.34` — **Standard Support (Selected)**
+  - `1.33` — Extended Support (Incurs +$0.60/hr surcharge)
+  - `1.32` — Extended Support (Incurs +$0.60/hr surcharge)
+  - `1.31` — Extended Support (Incurs +$0.60/hr surcharge)
+- **Selection Rationale:** Choosing Kubernetes `1.36` ensures standard support on Amazon EKS, avoiding the $0.60/hour Extended Support surcharge while maintaining compatibility with core Kubernetes workloads and EKS add-ons.
+
+---
+
+## 2. Detailed Cost Analysis & Account-Aware Classification
 
 | Service / Resource | Resource Identifier | Cost Classification | Estimated Monthly Cost | Architecture Notes & Account Eligibility |
 |---|---|---|---|---|
-| **EKS Control Plane** | `aws_eks_cluster.nexvion` (`nexvion-eks`) | **MUST INCUR CHARGES** | ~$73.00 / month ($0.10/hr) | **Not covered by AWS Free Tier.** Standard Support (v1.32) avoids $0.60/hr Extended Support penalty. |
+| **EKS Control Plane** | `aws_eks_cluster.nexvion` (`nexvion-eks`) | **MUST INCUR CHARGES** | ~$73.00 / month ($0.10/hr) | **Not covered by AWS Free Tier.** Standard Support (v1.36) avoids $0.60/hr Extended Support penalty. |
 | **EC2 Worker Nodes** | `aws_eks_node_group.nexvion` (2x `t3.medium`) | **POTENTIALLY BILLABLE** | ~$60.00 / month ($0.0416/hr x 2) | *Potentially billable; verify current account-specific Free Tier eligibility*. `t3.medium` (4GB RAM) supports CNI/CoreDNS. `t3.small` can be configured via `variables.tf`. |
 | **Public IPv4 Addresses** | Node public IPs & EC2 EIP | **POTENTIALLY BILLABLE** | ~$3.60 / month per IP ($0.005/hr) | Standard AWS public IPv4 charge (effective Feb 2024). *Potentially billable; verify account eligibility*. |
 | **EBS Storage Volumes** | Worker node root EBS volumes | **POTENTIALLY BILLABLE** | $0.00 – $3.20 / month | 20 GB root EBS volume per node. *Potentially billable if cumulative account storage exceeds 30 GB/mo gp2/gp3 Free Tier limit*. |
@@ -62,7 +77,7 @@ This architecture safely extends the existing Nexvion AWS environment without mo
 
 ---
 
-## 2. Worker Node Cost Settings & Sizing Tradeoffs
+## 3. Worker Node Cost Settings & Sizing Tradeoffs
 
 Worker node parameters are fully configurable in `terraform/variables.tf`:
 - `eks_node_instance_types` (default: `["t3.medium"]`)
@@ -81,7 +96,7 @@ Worker node parameters are fully configurable in `terraform/variables.tf`:
 
 ---
 
-## 3. EKS Networking Review (Cost-Saving Staging Design)
+## 4. EKS Networking Review (Cost-Saving Staging Design)
 
 - **VPC Preservation:** Reuses existing VPC `vpc-09df3f5fdabdcf81f` (`172.31.0.0/16`).
 - **Multi-AZ Subnets:**
@@ -94,9 +109,9 @@ Worker node parameters are fully configurable in `terraform/variables.tf`:
 
 ---
 
-## 4. IAM Provisioning Permissions & Role Design
+## 5. IAM Provisioning Permissions & Role Design
 
-### A. Existing Policies vs. Required Custom Policy for User `Nexvion`
+### A. Pre-Attached Policies vs. Required Custom Policy for User `Nexvion`
 
 The IAM user `arn:aws:iam::677012863109:user/Nexvion` has the following pre-attached managed policies:
 - **`AmazonEC2FullAccess`:** Grants permissions for VPCs, Subnets, Route Tables, Internet Gateways, Security Groups, and EC2 instances.
@@ -126,7 +141,8 @@ To provision EKS and IAM roles via Terraform without granting `AdministratorAcce
         "eks:CreateAddon",
         "eks:DescribeAddon",
         "eks:DeleteAddon",
-        "eks:ListAddons"
+        "eks:ListAddons",
+        "eks:DescribeClusterVersions"
       ],
       "Resource": "*"
     },
@@ -159,19 +175,19 @@ To provision EKS and IAM roles via Terraform without granting `AdministratorAcce
 
 ---
 
-## 5. EKS Add-ons & Hardening Limitations
+## 6. EKS Add-ons & Hardening Limitations
 
-- **Kubernetes Version:** `1.32` (Standard Support release in 2026).
+- **Kubernetes Version:** `1.36` (Standard Support release).
 - **Core Add-ons Declared:**
-  - `vpc-cni`: AWS VPC CNI plugin for pod networking.
-  - `coredns`: Kubernetes DNS service.
-  - `kube-proxy`: Worker node network proxy.
+  - `vpc-cni`: AWS VPC CNI plugin for pod networking (compatible with K8s 1.36).
+  - `coredns`: Kubernetes DNS service (compatible with K8s 1.36).
+  - `kube-proxy`: Worker node network proxy (compatible with K8s 1.36).
 - **EBS CSI Driver (`aws-ebs-csi-driver`):** Deferred because the NGINX web workload is stateless.
 - **CNI Security Tradeoff Note:** `AmazonEKS_CNI_Policy` is attached directly to the worker node role. In high-security production clusters, IRSA (IAM Roles for Service Accounts) can isolate `aws-node` pod permissions to a dedicated IAM role. For this staging setup, attaching CNI policy to the node role is standard and avoids OIDC provider complexity.
 
 ---
 
-## 6. Terraform Safety Audit (Zero-Destruction Guarantee)
+## 7. Terraform Safety Audit (Zero-Destruction Guarantee)
 
 Execution of `terraform plan "-out=phase-4-4-eks.tfplan"` produces:
 
@@ -200,7 +216,7 @@ Changes to Outputs:
 
 ---
 
-## 7. SAFE Targeted Cleanup Procedure
+## 8. SAFE Targeted Cleanup Procedure
 
 > [!CAUTION]
 > **NEVER RUN A BLIND `terraform destroy`**

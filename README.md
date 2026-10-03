@@ -82,7 +82,7 @@
 ---
 
 ## Phase 4.4 Overview: Amazon EKS Cluster & Managed Node Group Infrastructure (Cost-Constrained Staging)
-- **EKS Cluster Resource:** `aws_eks_cluster.nexvion` (`nexvion-eks`, Kubernetes `1.32` Standard Support in 2026) in `ap-south-1`.
+- **EKS Cluster Resource:** `aws_eks_cluster.nexvion` (`nexvion-eks`, Kubernetes `1.36` Standard Support) in `ap-south-1`.
 - **Managed Node Group:** `aws_eks_node_group.nexvion` (`nexvion-node-group`, 2x `t3.medium` instances, configurable min:1, max:3).
 - **Cost-Constrained Multi-AZ Networking:** Extends existing VPC (`vpc-09df3f5fdabdcf81f`) with a second public subnet (`aws_subnet.eks_public_a`, `172.31.16.0/20` in `ap-south-1a`), avoiding expensive NAT Gateway charges ($0.00 extra NAT GW cost).
 - **Account-Aware Cost Disclosures:** EKS Control Plane ($0.10/hr, ~$73/mo) is **not covered by Free Tier**; EC2 worker nodes (`t3.medium`/`t3.small`) are potentially billable. Cluster is provisioned on-demand.
