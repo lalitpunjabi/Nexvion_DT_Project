@@ -4,7 +4,7 @@
 
 Phase 4.7 implements an in-cluster observability foundation on the live **Amazon EKS** cluster (`nexvion-eks`, Kubernetes `v1.36.4`) in region `ap-south-1`.
 
-This phase deploys **Prometheus** for metrics collection and time-series storage alongside **Grafana** for visualization and dashboarding. The deployment uses a resource-conscious, Helm-based staging architecture tailored for the single `t3.small` EKS worker node, establishing complete visibility into Kubernetes nodes, pod resource usage, HPA scaling metrics, and workload availability without incurring additional AWS managed service costs ($0.00 extra cloud infrastructure charges).
+This phase deploys **Prometheus** for metrics collection and time-series storage alongside **Grafana** for visualization and dashboarding. Prometheus and Grafana are deployed using the existing EKS worker capacity without provisioning separate AWS managed observability services. This avoids additional managed-service and dedicated storage charges associated with those alternatives, but the existing EKS control-plane and worker-node costs still apply.
 
 ---
 
@@ -96,17 +96,21 @@ Prometheus automatically discovers and scrapes cluster metrics every `15s`:
 
 ---
 
-## 4. Grafana Datasource & Dashboard Provisioning
+## 4. Grafana Datasource, Dashboard & Secret Provisioning
 
 Grafana is provisioned declaratively via [`helm/monitoring/grafana-values.yaml`](file:///c:/Users/Lalit%20Punjabi/Nexvion_DT_Project/helm/monitoring/grafana-values.yaml):
 
-### A. Datasource Provisioning
+### A. Secret Management & Credential Handling
+- **No Plaintext Passwords in Git:** Plaintext Grafana admin credentials (`adminPassword`) are **intentionally omitted** from repository code and configuration files.
+- **Dynamic Credential Injection:** Admin credentials must be supplied dynamically at deployment time (e.g., via `--set adminPassword=${GRAFANA_ADMIN_PASSWORD}` or by referencing a pre-created Kubernetes Secret via `admin.existingSecret`).
+
+### B. Datasource Provisioning
 - **Name:** `Prometheus` (Default)
 - **URL:** `http://prometheus-server.monitoring.svc.cluster.local:80`
 - **Access:** `proxy`
 - **Scrape Interval:** `15s`
 
-### B. Declarative Dashboard (`Nexvion EKS Platform Observability`)
+### C. Declarative Dashboard (`Nexvion EKS Platform Observability`)
 - **Dashboard UID:** `nexvion-platform-overview`
 - **Folder:** `Nexvion Platform`
 - **Visual Panels Provided:**
@@ -121,16 +125,18 @@ Grafana is provisioned declaratively via [`helm/monitoring/grafana-values.yaml`]
 
 ---
 
-## 5. Staging Resource Optimization & Cost Analysis
+## 5. Staging Resource Optimization & Infrastructure Cost Analysis
+
+Prometheus and Grafana are deployed using the existing EKS worker capacity without provisioning separate AWS managed observability services. This avoids additional managed-service and dedicated storage charges associated with those alternatives, but the existing EKS control-plane and worker-node costs still apply.
 
 | Component | Resource Requests | Resource Limits | Cost Justification |
 |---|---|---|---|
-| **Prometheus Server** | CPU: `100m`, Memory: `128Mi` | CPU: `300m`, Memory: `384Mi` | Configured with `2d` retention and `emptyDir` storage ($0.00 EBS cost). |
+| **Prometheus Server** | CPU: `100m`, Memory: `128Mi` | CPU: `300m`, Memory: `384Mi` | Configured with `2d` retention and `emptyDir` storage (utilizes existing worker node capacity). |
 | **Kube-State-Metrics** | CPU: `10m`, Memory: `32Mi` | CPU: `50m`, Memory: `64Mi` | Lightweight exporter consuming ~15MiB RAM. |
 | **Node-Exporter** | CPU: `10m`, Memory: `16Mi` | CPU: `50m`, Memory: `32Mi` | DaemonSet container consuming ~10MiB RAM. |
-| **Grafana** | CPU: `50m`, Memory: `64Mi` | CPU: `200m`, Memory: `128Mi` | Configured with `emptyDir` storage ($0.00 EBS cost). |
-| **Alertmanager & Pushgateway** | **Disabled ($0.00)** | **Disabled ($0.00)** | Disabled to conserve RAM/CPU on `t3.small` worker node. |
-| **AWS Managed Monitoring** | **Omitted ($0.00)** | **Omitted ($0.00)** | Avoids AWS Managed Prometheus ($0.90/GB) and Amazon Managed Grafana ($9.00/user-mo). |
+| **Grafana** | CPU: `50m`, Memory: `64Mi` | CPU: `200m`, Memory: `128Mi` | Configured with `emptyDir` storage (utilizes existing worker node capacity). |
+| **Alertmanager & Pushgateway** | Disabled | Disabled | Disabled to conserve RAM/CPU on `t3.small` worker node. |
+| **AWS Managed Monitoring** | Omitted | Omitted | Avoids separate charges for AWS Managed Prometheus and Amazon Managed Grafana. |
 
 ---
 
@@ -177,13 +183,13 @@ kubectl exec -n monitoring deploy/prometheus-server -c prometheus-server -- wget
 
 ```bash
 # Query Grafana Datasources API
-kubectl exec -n monitoring deploy/prometheus-server -c prometheus-server -- wget -qO- --header="Authorization: Basic YWRtaW46bmV4dmlvbi1zdGFnaW5nLXBhc3M=" "http://grafana.monitoring.svc.cluster.local/api/datasources"
+kubectl exec -n monitoring deploy/prometheus-server -c prometheus-server -- wget -qO- --header="Authorization: Basic <base64-auth>" "http://grafana.monitoring.svc.cluster.local/api/datasources"
 ```
 **Result:** `name: "Prometheus"`, `type: "prometheus"`, `isDefault: true`, `url: "http://prometheus-server.monitoring.svc.cluster.local:80"`.
 
 ```bash
 # Query Grafana Provisioned Dashboards API
-kubectl exec -n monitoring deploy/prometheus-server -c prometheus-server -- wget -qO- --header="Authorization: Basic YWRtaW46bmV4dmlvbi1zdGFnaW5nLXBhc3M=" "http://grafana.monitoring.svc.cluster.local/api/search"
+kubectl exec -n monitoring deploy/prometheus-server -c prometheus-server -- wget -qO- --header="Authorization: Basic <base64-auth>" "http://grafana.monitoring.svc.cluster.local/api/search"
 ```
 **Result:** `title: "Nexvion EKS Platform Observability"`, `uid: "nexvion-platform-overview"`, `folderTitle: "Nexvion Platform"`.
 
@@ -191,7 +197,7 @@ kubectl exec -n monitoring deploy/prometheus-server -c prometheus-server -- wget
 
 ## 7. Known Limitations & Architectural Disclosures
 
-1. **Ephemeral Staging Storage:** Both Prometheus and Grafana use `emptyDir` volumes to avoid billable AWS EBS storage charges during staging testing. Time-series metrics reset if the server pod is deleted.
+1. **Ephemeral Staging Storage:** Both Prometheus and Grafana use `emptyDir` volumes on the worker node to avoid extra storage volume provisioning charges during staging. Time-series metrics reset if the server pod is deleted.
 2. **HTTP Application Metrics Disclosure:** `ingress-nginx` exports metrics on port 10254. Custom NGINX HTTP request counter metrics (`nginx_ingress_controller_requests`) require optional ServiceMonitor CRD scrapers (deferred). Application pod health is monitored via standard Kubernetes pod metrics, health probes, and deployment state indicators.
 
 ---

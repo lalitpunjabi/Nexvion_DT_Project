@@ -121,9 +121,10 @@
 ---
 
 ## Phase 4.7 Overview: Prometheus & Grafana Observability Foundation
-- **Prometheus Deployed:** `prometheus-community/prometheus` (v27.5.0) deployed to namespace `monitoring` with resource-conscious staging parameters (2d retention, `emptyDir` storage, 128Mi RAM request).
-- **Grafana Deployed:** `grafana/grafana` (v10.5.15) deployed to namespace `monitoring` with declarative Prometheus datasource and pre-loaded `Nexvion EKS Platform Observability` dashboard.
+- **Prometheus Deployed:** `prometheus-community/prometheus` (v27.5.0) deployed to namespace `monitoring` using existing EKS worker capacity with staging parameters (2d retention, `emptyDir` storage, 128Mi RAM request).
+- **Grafana Deployed:** `grafana/grafana` (v10.5.15) deployed to namespace `monitoring` with declarative Prometheus datasource and pre-loaded `Nexvion EKS Platform Observability` dashboard. Plaintext passwords omitted from Git; credentials injected dynamically at deployment time.
 - **PromQL Metrics Scraped & Validated:** Verified live collection for node CPU/RAM usage, `nexvion-web` pod CPU/RAM, deployment replicas (`2` available), HPA replicas (`2` current), and node readiness (`1` node ready).
+- **Resource & Cost Optimization:** Observability workloads run on existing EKS worker node capacity to avoid separate AWS managed service charges (EKS control plane and worker node costs apply).
 - **Workload & Ingress Preserved:** `deployment.apps/nexvion-web` (2/2 Ready), HPA (`cpu: 1%/70%`), and `ingress-nginx` NodePort routing remain 100% active and healthy.
 - **Detailed Specification:** See [`docs/phase-4-7-prometheus-grafana.md`](docs/phase-4-7-prometheus-grafana.md).
 

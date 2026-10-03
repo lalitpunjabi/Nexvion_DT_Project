@@ -1,9 +1,9 @@
 # Grafana Staging Configuration for Nexvion EKS (Phase 4.7)
 # Resource-conscious configuration with declarative Prometheus datasource and pre-loaded Nexvion dashboard
 
+# Admin credentials must be supplied dynamically at deployment time (e.g. via --set adminPassword=${GRAFANA_ADMIN_PASSWORD} or existingSecret)
 adminUser: admin
-# Default staging password for testing (No real production credentials)
-adminPassword: nexvion-staging-pass
+# adminPassword is intentionally omitted from Git to enforce secret management best practices
 
 hostNetwork: true
 
