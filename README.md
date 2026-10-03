@@ -16,7 +16,7 @@
 │      IGW, Route Table, Security Group, EC2, Elastic IP, and EIP Association             │
 │    - Ansible Configuration (`ansible/`): System hardening, Docker Engine, Jenkins      │
 ├────────────────────────────────────────────────────────────────────────────────────────┤
-│ 4. KUBERNETES, HELM, ECR & AMAZON EKS (Phase 4.1, 4.2, 4.3 & 4.4 Implemented)          │
+│ 4. KUBERNETES, HELM, ECR, EKS & WORKLOAD DEPLOYMENT (Phase 4.1 - 4.5 Implemented)      │
 │    - Phase 4.1 Raw Manifests (`kubernetes/`): Namespace, ConfigMap, Secret,            │
 │      Deployment, Service, Ingress, HPA (Validated on Minikube)                          │
 │    - Phase 4.2 Helm Packaging (`helm/nexvion-web/`): Templated Helm 3 Chart with      │
@@ -24,7 +24,9 @@
 │    - Phase 4.3 ECR Container Registry (`terraform/main.tf`): Immutable `nexvion-web`  │
 │      ECR repository, AES256 encryption, scan-on-push, and 7-day untagged lifecycle     │
 │    - Phase 4.4 EKS Infrastructure (`terraform/main.tf`): Amazon EKS cluster            │
-│      `nexvion-eks` (v1.31), managed node group (2x `t3.small`), IAM roles, multi-AZ   │
+│      `nexvion-eks` (v1.36), managed node group (t3.small), IAM roles, multi-AZ         │
+│    - Phase 4.5 EKS Workload Deployment (`helm/nexvion-web/`): Helm release deployed to  │
+│      EKS pulling ECR image `0d575d0` (2/2 Ready pods, ClusterIP Service, health 200)   │
 └────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -89,6 +91,16 @@
 - **IAM Security:** Dedicated roles (`nexvion-eks-cluster-role`, `nexvion-eks-node-group-role`) with `AmazonEKSClusterPolicy`, `AmazonEKSWorkerNodePolicy`, `AmazonEKS_CNI_Policy`, and `AmazonEC2ContainerRegistryReadOnly`.
 - **Zero Destruction Guarantee:** Verified via `terraform plan` (13 to add, 0 to change, 0 to destroy). Existing EC2, EIP, VPC, subnet, IGW, SG, and ECR preserved untouched.
 - **Detailed Specification:** See [`docs/phase-4-4.md`](docs/phase-4-4.md).
+
+---
+
+## Phase 4.5 Overview: Amazon EKS Workload Deployment & Application Health Validation
+- **Helm Release Deployed:** `nexvion-web` deployed to namespace `nexvion` on live AWS EKS cluster (`nexvion-eks` v1.36.4).
+- **ECR Image Artifact:** `677012863109.dkr.ecr.ap-south-1.amazonaws.com/nexvion-web:0d575d0` (Git SHA tag `0d575d0`).
+- **Workload Status:** `deployment.apps/nexvion-web` with 2/2 Ready running pods, UID/GID 101 non-root, read-only root filesystem.
+- **Service & Networking:** ClusterIP Service (`service/nexvion-web-service` on port 80/TCP) serving internally. External load balancer (ALB/NLB) intentionally omitted to save ~$18.00/mo staging charges.
+- **Application Endpoint Validation:** `/healthz` (200 OK), `/` (200 OK), `products.html` (200 OK), and `payment.html` (200 OK) verified internally.
+- **Detailed Specification:** See [`docs/phase-4.5-eks-deployment.md`](docs/phase-4.5-eks-deployment.md).
 
 ---
 
