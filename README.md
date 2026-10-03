@@ -16,13 +16,15 @@
 │      IGW, Route Table, Security Group, EC2, Elastic IP, and EIP Association             │
 │    - Ansible Configuration (`ansible/`): System hardening, Docker Engine, Jenkins      │
 ├────────────────────────────────────────────────────────────────────────────────────────┤
-│ 4. KUBERNETES, HELM & ECR CONTAINER REGISTRY (Phase 4.1, 4.2 & 4.3 Implemented)        │
+│ 4. KUBERNETES, HELM, ECR & AMAZON EKS (Phase 4.1, 4.2, 4.3 & 4.4 Implemented)          │
 │    - Phase 4.1 Raw Manifests (`kubernetes/`): Namespace, ConfigMap, Secret,            │
 │      Deployment, Service, Ingress, HPA (Validated on Minikube)                          │
 │    - Phase 4.2 Helm Packaging (`helm/nexvion-web/`): Templated Helm 3 Chart with      │
 │      values-dev.yaml & values-prod.yaml (Verified deployed & running on Minikube)      │
 │    - Phase 4.3 ECR Container Registry (`terraform/main.tf`): Immutable `nexvion-web`  │
 │      ECR repository, AES256 encryption, scan-on-push, and 7-day untagged lifecycle     │
+│    - Phase 4.4 EKS Infrastructure (`terraform/main.tf`): Amazon EKS cluster            │
+│      `nexvion-eks` (v1.31), managed node group (2x `t3.medium`), IAM roles, multi-AZ   │
 └────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -76,6 +78,16 @@
 - **Trivy-Before-Push Workflow:** Image scanning via Trivy `0.60.0` enforced before pushing to ECR; vulnerable builds are blocked at the security gate.
 - **Jenkins Integration:** `Jenkinsfile` Stage 6 supports `AWS_ECR` registry push via short-lived AWS CLI token authentication (`aws ecr get-login-password`), preserving local staging defaults (`LOCAL_ONLY`).
 - **Detailed Specification:** See [`docs/phase-4-3.md`](docs/phase-4-3.md).
+
+---
+
+## Phase 4.4 Overview: Amazon EKS Cluster & Managed Node Group Infrastructure
+- **EKS Cluster Resource:** `aws_eks_cluster.nexvion` (`nexvion-eks`, Kubernetes `1.31`) in `ap-south-1`.
+- **Managed Node Group:** `aws_eks_node_group.nexvion` (`nexvion-node-group`, 2x `t3.medium` instances, scaling min:1, max:3).
+- **Multi-AZ Networking:** Extends existing VPC (`vpc-09df3f5fdabdcf81f`) with a second public subnet (`aws_subnet.eks_public_a`, `172.31.16.0/20` in `ap-south-1a`), avoiding expensive NAT Gateway costs ($0.00 extra networking overhead).
+- **IAM Security:** Least-privilege IAM roles (`nexvion-eks-cluster-role`, `nexvion-eks-node-group-role`) with `AmazonEKSClusterPolicy`, `AmazonEKSWorkerNodePolicy`, `AmazonEKS_CNI_Policy`, and `AmazonEC2ContainerRegistryReadOnly`.
+- **Zero Destruction Safety:** Verified via `terraform plan` (10 to add, 0 to change, 0 to destroy). Existing EC2, EIP, VPC, subnet, IGW, and SG preserved intact.
+- **Detailed Specification:** See [`docs/phase-4-4.md`](docs/phase-4-4.md).
 
 ---
 

@@ -48,3 +48,37 @@ output "ecr_repository_name" {
   value       = aws_ecr_repository.nexvion.name
 }
 
+# ------------------------------------------------------------------------------
+# EKS Infrastructure Outputs (Phase 4.4)
+# ------------------------------------------------------------------------------
+output "eks_cluster_name" {
+  description = "The name of the Amazon EKS cluster"
+  value       = aws_eks_cluster.nexvion.name
+}
+
+output "eks_cluster_endpoint" {
+  description = "Endpoint URL for the Amazon EKS cluster control plane"
+  value       = aws_eks_cluster.nexvion.endpoint
+}
+
+output "eks_cluster_arn" {
+  description = "The Amazon Resource Name (ARN) of the EKS cluster"
+  value       = aws_eks_cluster.nexvion.arn
+}
+
+output "eks_cluster_security_group_id" {
+  description = "Security Group ID automatically created by EKS for cluster communication"
+  value       = aws_eks_cluster.nexvion.vpc_config[0].cluster_security_group_id
+}
+
+output "eks_node_group_name" {
+  description = "The name of the EKS managed node group"
+  value       = aws_eks_node_group.nexvion.node_group_name
+}
+
+output "eks_node_group_arn" {
+  description = "The Amazon Resource Name (ARN) of the EKS node group"
+  value       = aws_eks_node_group.nexvion.arn
+}
+
+

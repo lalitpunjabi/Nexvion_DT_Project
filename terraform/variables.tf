@@ -51,3 +51,61 @@ variable "root_volume_size" {
   type        = number
   default     = 20
 }
+
+# ------------------------------------------------------------------------------
+# EKS Cluster & Node Group Variables (Phase 4.4)
+# ------------------------------------------------------------------------------
+variable "eks_cluster_name" {
+  description = "Name of the Amazon EKS cluster"
+  type        = string
+  default     = "nexvion-eks"
+}
+
+variable "eks_cluster_version" {
+  description = "Kubernetes control plane version for EKS"
+  type        = string
+  default     = "1.31"
+}
+
+variable "eks_subnet_cidr_a" {
+  description = "CIDR block for the additional EKS public subnet in ap-south-1a"
+  type        = string
+  default     = "172.31.16.0/20"
+}
+
+variable "eks_az_a" {
+  description = "Availability Zone for the additional EKS subnet"
+  type        = string
+  default     = "ap-south-1a"
+}
+
+variable "eks_node_group_name" {
+  description = "Name of the EKS managed node group"
+  type        = string
+  default     = "nexvion-node-group"
+}
+
+variable "eks_node_instance_types" {
+  description = "EC2 Instance types for EKS managed node group"
+  type        = list(string)
+  default     = ["t3.medium"]
+}
+
+variable "eks_desired_capacity" {
+  description = "Desired number of worker nodes"
+  type        = number
+  default     = 2
+}
+
+variable "eks_min_capacity" {
+  description = "Minimum number of worker nodes"
+  type        = number
+  default     = 1
+}
+
+variable "eks_max_capacity" {
+  description = "Maximum number of worker nodes"
+  type        = number
+  default     = 3
+}
+
