@@ -32,7 +32,7 @@ This architecture safely extends the existing Nexvion AWS environment without mo
 |  |                                                             |  |                                                   |  |
 |  |  +---------------------------+  +------------------------+  |  |  +---------------------------------------------+  |  |
 |  |  | Jenkins / Ansible EC2     |  | EKS Worker Nodes       |  |  |  | EKS Worker Nodes                            |  |  |
-|  |  | i-057f6d6d0bbb33b37       |  | (t3.medium, Node Group)|  |  |  | (t3.medium, Node Group)                     |  |  |
+|  |  | i-057f6d6d0bbb33b37       |  | (t3.small, Node Group)|  |  |  | (t3.small, Node Group)                     |  |  |
 |  |  | EIP: 52.66.25.69          |  |                        |  |  |  |                                             |  |  |
 |  |  +---------------------------+  +------------------------+  |  |  +---------------------------------------------+  |  |
 |  +-------------------------------------------------------------+  +---------------------------------------------------+  |
@@ -68,7 +68,7 @@ This architecture safely extends the existing Nexvion AWS environment without mo
 | Service / Resource | Resource Identifier | Cost Classification | Estimated Monthly Cost | Architecture Notes & Account Eligibility |
 |---|---|---|---|---|
 | **EKS Control Plane** | `aws_eks_cluster.nexvion` (`nexvion-eks`) | **MUST INCUR CHARGES** | ~$73.00 / month ($0.10/hr) | **Not covered by AWS Free Tier.** Standard Support (v1.36) avoids $0.60/hr Extended Support penalty. |
-| **EC2 Worker Nodes** | `aws_eks_node_group.nexvion` (2x `t3.medium`) | **POTENTIALLY BILLABLE** | ~$60.00 / month ($0.0416/hr x 2) | *Potentially billable; verify current account-specific Free Tier eligibility*. `t3.medium` (4GB RAM) supports CNI/CoreDNS. `t3.small` can be configured via `variables.tf`. |
+| **EC2 Worker Nodes** | `aws_eks_node_group.nexvion` (2x `t3.small`) | **POTENTIALLY BILLABLE** | ~$60.00 / month ($0.0416/hr x 2) | *Potentially billable; verify current account-specific Free Tier eligibility*. `t3.small` (4GB RAM) supports CNI/CoreDNS. `t3.small` can be configured via `variables.tf`. |
 | **Public IPv4 Addresses** | Node public IPs & EC2 EIP | **POTENTIALLY BILLABLE** | ~$3.60 / month per IP ($0.005/hr) | Standard AWS public IPv4 charge (effective Feb 2024). *Potentially billable; verify account eligibility*. |
 | **EBS Storage Volumes** | Worker node root EBS volumes | **POTENTIALLY BILLABLE** | $0.00 – $3.20 / month | 20 GB root EBS volume per node. *Potentially billable if cumulative account storage exceeds 30 GB/mo gp2/gp3 Free Tier limit*. |
 | **Amazon ECR Storage** | `aws_ecr_repository.nexvion` (`nexvion-web`) | **POTENTIALLY BILLABLE** | $0.00 – $0.50 / month | Includes 500 MB storage/month in Free Tier; excess is $0.10/GB-mo. |
@@ -80,17 +80,17 @@ This architecture safely extends the existing Nexvion AWS environment without mo
 ## 3. Worker Node Cost Settings & Sizing Tradeoffs
 
 Worker node parameters are fully configurable in `terraform/variables.tf`:
-- `eks_node_instance_types` (default: `["t3.medium"]`)
+- `eks_node_instance_types` (default: `["t3.small"]`)
 - `eks_desired_capacity` (default: `2`)
 - `eks_min_capacity` (default: `1`)
 - `eks_max_capacity` (default: `3`)
 
 ### Availability vs. Cost Tradeoff Analysis:
 1. **Single Worker Node (`desired_size = 1`):**
-   - **Cost:** Lower cost (~$30.00/mo for 1x `t3.medium` or ~$15.00/mo for 1x `t3.small`).
+   - **Cost:** Lower cost (~$15.00/mo for 1x `t3.small`).
    - **Availability:** Lower availability. Worker node restart or maintenance results in total cluster pod downtime. Multi-AZ pod scheduling is disabled.
 2. **Dual Worker Nodes (`desired_size = 2` - Current Default):**
-   - **Cost:** Higher cost (~$60.00/mo for 2x `t3.medium` or ~$30.00/mo for 2x `t3.small`).
+   - **Cost:** Higher cost (~$30.00/mo for 2x `t3.small`).
    - **Availability:** High availability. Pods are distributed across Availability Zones (`ap-south-1a` and `ap-south-1b`), enabling zero-downtime rolling updates and high availability evaluation.
    - **Justification for Internship Staging:** Defaulting to `desired_size = 2` validates production multi-AZ pod scheduling, while allowing simple override to `desired_size = 1` via `-var="eks_desired_capacity=1"` for minimal cost testing.
 
