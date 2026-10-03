@@ -81,12 +81,13 @@
 
 ---
 
-## Phase 4.4 Overview: Amazon EKS Cluster & Managed Node Group Infrastructure
-- **EKS Cluster Resource:** `aws_eks_cluster.nexvion` (`nexvion-eks`, Kubernetes `1.31`) in `ap-south-1`.
-- **Managed Node Group:** `aws_eks_node_group.nexvion` (`nexvion-node-group`, 2x `t3.medium` instances, scaling min:1, max:3).
-- **Multi-AZ Networking:** Extends existing VPC (`vpc-09df3f5fdabdcf81f`) with a second public subnet (`aws_subnet.eks_public_a`, `172.31.16.0/20` in `ap-south-1a`), avoiding expensive NAT Gateway costs ($0.00 extra networking overhead).
-- **IAM Security:** Least-privilege IAM roles (`nexvion-eks-cluster-role`, `nexvion-eks-node-group-role`) with `AmazonEKSClusterPolicy`, `AmazonEKSWorkerNodePolicy`, `AmazonEKS_CNI_Policy`, and `AmazonEC2ContainerRegistryReadOnly`.
-- **Zero Destruction Safety:** Verified via `terraform plan` (10 to add, 0 to change, 0 to destroy). Existing EC2, EIP, VPC, subnet, IGW, and SG preserved intact.
+## Phase 4.4 Overview: Amazon EKS Cluster & Managed Node Group Infrastructure (Cost-Constrained Staging)
+- **EKS Cluster Resource:** `aws_eks_cluster.nexvion` (`nexvion-eks`, Kubernetes `1.32` Standard Support in 2026) in `ap-south-1`.
+- **Managed Node Group:** `aws_eks_node_group.nexvion` (`nexvion-node-group`, 2x `t3.medium` instances, configurable min:1, max:3).
+- **Cost-Constrained Multi-AZ Networking:** Extends existing VPC (`vpc-09df3f5fdabdcf81f`) with a second public subnet (`aws_subnet.eks_public_a`, `172.31.16.0/20` in `ap-south-1a`), avoiding expensive NAT Gateway charges ($0.00 extra NAT GW cost).
+- **Account-Aware Cost Disclosures:** EKS Control Plane ($0.10/hr, ~$73/mo) is **not covered by Free Tier**; EC2 worker nodes (`t3.medium`/`t3.small`) are potentially billable. Cluster is provisioned on-demand.
+- **IAM Security:** Dedicated roles (`nexvion-eks-cluster-role`, `nexvion-eks-node-group-role`) with `AmazonEKSClusterPolicy`, `AmazonEKSWorkerNodePolicy`, `AmazonEKS_CNI_Policy`, and `AmazonEC2ContainerRegistryReadOnly`.
+- **Zero Destruction Guarantee:** Verified via `terraform plan` (13 to add, 0 to change, 0 to destroy). Existing EC2, EIP, VPC, subnet, IGW, SG, and ECR preserved untouched.
 - **Detailed Specification:** See [`docs/phase-4-4.md`](docs/phase-4-4.md).
 
 ---

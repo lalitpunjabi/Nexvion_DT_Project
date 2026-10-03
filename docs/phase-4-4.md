@@ -7,14 +7,15 @@ Phase 4.4 defines the Infrastructure as Code (IaC) configuration for provisionin
 This architecture safely extends the existing Nexvion AWS environment without modifying, replacing, or destroying any pre-existing infrastructure (VPC, Jenkins/Ansible EC2 server, Elastic IP, Internet Gateway, route tables, security groups, or ECR container registry).
 
 > [!WARNING]
-> **IMPORTANT AWS COST & FREE TIER DISCLAIMER**
+> **COST-CONSTRAINED STAGING / LAB ARCHITECTURE & ACCOUNT-AWARE COST NOTICE**
 > 
-> This architecture is designed specifically as a **COST-CONSTRAINED STAGING / LAB ARCHITECTURE** for internship and development testing.
+> This configuration is structured as a **COST-CONSTRAINED STAGING / LAB ARCHITECTURE** for internship and development testing.
 >
 > 1. **EKS Control Plane is NOT FREE:** AWS charges **$0.10 per hour (~$73.00/month)** for the EKS control plane (`aws_eks_cluster.nexvion`). It is **NOT** covered by the AWS Free Tier.
-> 2. **Worker Nodes:** Managed worker nodes (`t3.medium` or `t3.small`) exceed 750h micro Free Tier limits and incur EC2 compute charges (~$0.0416/hr each, ~$60.00/month for 2 nodes).
-> 3. **Public IPv4 Addresses:** AWS charges $0.005/hr (~$3.60/month per IP) for public IPv4 addresses.
-> 4. **Cost Control Safeguard:** `terraform apply` is **NOT** run automatically. To prevent unexpected AWS bills, the cluster should only be provisioned when actively testing, and destroyed immediately afterwards using `terraform destroy -target=aws_eks_node_group.nexvion -target=aws_eks_cluster.nexvion`.
+> 2. **Kubernetes Version Selection:** Configured with Kubernetes **1.32** (Standard Support in 2026). Standard Support avoids AWS Extended Support surcharges ($0.60/hr extra charged for deprecated K8s releases).
+> 3. **Account-Specific Eligibility:** Service items below are marked as *potentially billable; verify current account-specific Free Tier eligibility*.
+> 4. **Zero Automatic Apply:** `terraform apply` is **NOT** run automatically. To prevent unexpected AWS bills, the cluster should only be provisioned on-demand when actively testing.
+> 5. **Safe Cleanup Procedure:** Never run a blind `terraform destroy` without target flags, as doing so would destroy your imported shared infrastructure. Follow the safe targeted cleanup procedure below.
 
 ---
 
@@ -40,50 +41,75 @@ This architecture safely extends the existing Nexvion AWS environment without mo
 |                                 +----------------------------------+                                                    |
 |                                 | Amazon EKS Control Plane         |                                                    |
 |                                 | Cluster Name: nexvion-eks        |                                                    |
-|                                 | Kubernetes Version: 1.31         |                                                    |
+|                                 | Kubernetes Version: 1.32         |                                                    |
 |                                 +----------------------------------+                                                    |
 +-------------------------------------------------------------------------------------------------------------------------+
 ```
 
 ---
 
-## 1. Comprehensive AWS Free Tier & Cost Breakdown
+## 1. Detailed Cost Analysis & Free Tier Classification
 
-| Service / Resource | Resource Identifier | Cost Classification | Estimated Monthly Cost | Architecture Notes & Safeguards |
+| Service / Resource | Resource Identifier | Cost Classification | Estimated Monthly Cost | Architecture Notes & Account Eligibility |
 |---|---|---|---|---|
-| **EKS Control Plane** | `aws_eks_cluster.nexvion` (`nexvion-eks`) | **MAY INCUR CHARGES** | ~$73.00 / month ($0.10/hr) | **Not covered by AWS Free Tier.** Provisioned on-demand; destroy after testing. |
-| **EC2 Worker Nodes** | `aws_eks_node_group.nexvion` (2x `t3.medium`) | **MAY INCUR CHARGES** | ~$60.00 / month ($0.0416/hr x 2) | `t3.medium` (4GB RAM) required for system pods (CNI, CoreDNS). `t3.small` can be set in `variables.tf`. |
-| **Public IPv4 Addresses** | Node public IPs & EC2 EIP | **MAY INCUR CHARGES** | ~$3.60 / month per IP ($0.005/hr) | Standard AWS public IPv4 charge (effective Feb 2024). |
-| **NAT Gateway** | N/A | **AVOIDED ($0.00)** | **$0.00 (Omitted)** | **Intentionally omitted** to save ~$32.00/mo per NAT GW + data fees. Worker nodes use public subnets + IGW. |
-| **Application Load Balancer** | N/A | **AVOIDED ($0.00)** | **$0.00 (Omitted)** | Omitted for Phase 4.4 to prevent $18.00/mo ALB base charge. NodePort / Ingress evaluated in Phase 4.5. |
-| **EBS Storage Volumes** | Worker node root EBS volumes | **POTENTIALLY FREE** | $0.00 (Within Free Tier) | 20 GB root EBS volume per node. Combined with EC2 volume (20 GB), stays within 30 GB/mo gp2/gp3 Free Tier limits if run sequentially. |
-| **Amazon ECR** | `aws_ecr_repository.nexvion` (`nexvion-web`) | **POTENTIALLY FREE** | $0.00 (Within Free Tier) | Includes 500 MB storage/month in Free Tier. |
+| **EKS Control Plane** | `aws_eks_cluster.nexvion` (`nexvion-eks`) | **MUST INCUR CHARGES** | ~$73.00 / month ($0.10/hr) | **Not covered by AWS Free Tier.** Standard Support (v1.32) avoids $0.60/hr Extended Support penalty. |
+| **EC2 Worker Nodes** | `aws_eks_node_group.nexvion` (2x `t3.medium`) | **POTENTIALLY BILLABLE** | ~$60.00 / month ($0.0416/hr x 2) | *Potentially billable; verify current account-specific Free Tier eligibility*. `t3.medium` (4GB RAM) supports CNI/CoreDNS. `t3.small` can be configured via `variables.tf`. |
+| **Public IPv4 Addresses** | Node public IPs & EC2 EIP | **POTENTIALLY BILLABLE** | ~$3.60 / month per IP ($0.005/hr) | Standard AWS public IPv4 charge (effective Feb 2024). *Potentially billable; verify account eligibility*. |
+| **EBS Storage Volumes** | Worker node root EBS volumes | **POTENTIALLY BILLABLE** | $0.00 – $3.20 / month | 20 GB root EBS volume per node. *Potentially billable if cumulative account storage exceeds 30 GB/mo gp2/gp3 Free Tier limit*. |
+| **Amazon ECR Storage** | `aws_ecr_repository.nexvion` (`nexvion-web`) | **POTENTIALLY BILLABLE** | $0.00 – $0.50 / month | Includes 500 MB storage/month in Free Tier; excess is $0.10/GB-mo. |
+| **NAT Gateway** | N/A | **AVOIDED ($0.00)** | **$0.00 (Omitted)** | **Intentionally omitted** to save ~$32.00/mo per NAT GW. Worker nodes run in public subnets with IGW routes. |
+| **Application Load Balancer** | N/A | **AVOIDED ($0.00)** | **$0.00 (Omitted)** | **Intentionally omitted** for Phase 4.4 to prevent $18.00/mo ALB base charge. |
 
 ---
 
-## 2. EKS Networking Design & Cost-Saving Tradeoffs
+## 2. Worker Node Cost Settings & Sizing Tradeoffs
+
+Worker node parameters are fully configurable in `terraform/variables.tf`:
+- `eks_node_instance_types` (default: `["t3.medium"]`)
+- `eks_desired_capacity` (default: `2`)
+- `eks_min_capacity` (default: `1`)
+- `eks_max_capacity` (default: `3`)
+
+### Availability vs. Cost Tradeoff Analysis:
+1. **Single Worker Node (`desired_size = 1`):**
+   - **Cost:** Lower cost (~$30.00/mo for 1x `t3.medium` or ~$15.00/mo for 1x `t3.small`).
+   - **Availability:** Lower availability. Worker node restart or maintenance results in total cluster pod downtime. Multi-AZ pod scheduling is disabled.
+2. **Dual Worker Nodes (`desired_size = 2` - Current Default):**
+   - **Cost:** Higher cost (~$60.00/mo for 2x `t3.medium` or ~$30.00/mo for 2x `t3.small`).
+   - **Availability:** High availability. Pods are distributed across Availability Zones (`ap-south-1a` and `ap-south-1b`), enabling zero-downtime rolling updates and high availability evaluation.
+   - **Justification for Internship Staging:** Defaulting to `desired_size = 2` validates production multi-AZ pod scheduling, while allowing simple override to `desired_size = 1` via `-var="eks_desired_capacity=1"` for minimal cost testing.
+
+---
+
+## 3. EKS Networking Review (Cost-Saving Staging Design)
 
 - **VPC Preservation:** Reuses existing VPC `vpc-09df3f5fdabdcf81f` (`172.31.0.0/16`).
-- **Multi-AZ Requirement:** AWS EKS requires subnets in at least **2 Availability Zones**:
+- **Multi-AZ Subnets:**
   - **AZ 1 (`ap-south-1b`):** Reuses existing public subnet (`subnet-048f480df580a47f8`, CIDR `172.31.0.0/20`).
   - **AZ 2 (`ap-south-1a`):** Provisions additional public subnet (`aws_subnet.eks_public_a`, CIDR `172.31.16.0/20`) attached to existing route table (`rtb-0b5c00adb98133d97`) and Internet Gateway (`igw-045a89bde29483b3a`).
-- **Subnet Tags for EKS Discovery:**
+- **Subnet Tagging for EKS Discovery:**
   - `kubernetes.io/cluster/nexvion-eks = shared`
   - `kubernetes.io/role/elb = 1`
-- **Why NAT Gateway is Omitted:** Standard production EKS designs place worker nodes in private subnets behind dual NAT Gateways (~$64.00/month). For this staging/lab setup, worker nodes run in public subnets with `map_public_ip_on_launch = true`. Nodes communicate directly with AWS ECR and EKS control plane endpoints without needing NAT Gateways.
+- **NAT Gateway Omission Rationale:** Running worker nodes in public subnets directly connected to the Internet Gateway avoids dual NAT Gateway charges (~$64.00/month). Worker nodes assign public IPv4 addresses to communicate with ECR and EKS control plane endpoints directly.
 
 ---
 
-## 3. IAM Security Architecture & Required Provisioning Permissions
+## 4. IAM Provisioning Permissions & Role Design
 
-### A. Minimal IAM Permissions Required for Provisioning User `Nexvion`
-To run `terraform apply` for Phase 4.4, the IAM user `arn:aws:iam::677012863109:user/Nexvion` requires the following minimal IAM permissions (attach via custom IAM policy in AWS Console):
+### A. Existing Policies vs. Required Custom Policy for User `Nexvion`
+
+The IAM user `arn:aws:iam::677012863109:user/Nexvion` has the following pre-attached managed policies:
+- **`AmazonEC2FullAccess`:** Grants permissions for VPCs, Subnets, Route Tables, Internet Gateways, Security Groups, and EC2 instances.
+- **`AmazonEC2ContainerRegistryFullAccess`:** Grants permissions for ECR repository management and image pushing.
+
+To provision EKS and IAM roles via Terraform without granting `AdministratorAccess`, attach the following **additional custom IAM policy** to user `Nexvion`:
 
 ```json
 {
   "Version": "2012-10-17",
   "Statement": [
     {
+      "Sid": "EKSServiceManagement",
       "Effect": "Allow",
       "Action": [
         "eks:CreateCluster",
@@ -105,6 +131,7 @@ To run `terraform apply` for Phase 4.4, the IAM user `arn:aws:iam::677012863109:
       "Resource": "*"
     },
     {
+      "Sid": "IAMRoleManagementForEKS",
       "Effect": "Allow",
       "Action": [
         "iam:CreateRole",
@@ -113,49 +140,40 @@ To run `terraform apply` for Phase 4.4, the IAM user `arn:aws:iam::677012863109:
         "iam:PassRole",
         "iam:AttachRolePolicy",
         "iam:DetachRolePolicy",
-        "iam:ListAttachedRolePolicies"
+        "iam:ListAttachedRolePolicies",
+        "iam:CreateServiceLinkedRole"
       ],
       "Resource": [
         "arn:aws:iam::677012863109:role/nexvion-eks-cluster-role",
-        "arn:aws:iam::677012863109:role/nexvion-eks-node-group-role"
+        "arn:aws:iam::677012863109:role/nexvion-eks-node-group-role",
+        "arn:aws:iam::677012863109:role/aws-service-role/eks.amazonaws.com/*"
       ]
     }
   ]
 }
 ```
 
-> [!NOTE]
-> Do **NOT** attach `AdministratorAccess` or broad wildcard IAM permissions to the `Nexvion` user.
-
-### B. Dedicated IAM Roles Created by Terraform
-
-1. **EKS Cluster IAM Role (`nexvion-eks-cluster-role`):**
-   - Trust Policy: `eks.amazonaws.com`
-   - Managed Policy: `arn:aws:iam::aws:policy/AmazonEKSClusterPolicy`
-
-2. **EKS Node Group IAM Role (`nexvion-eks-node-group-role`):**
-   - Trust Policy: `ec2.amazonaws.com`
-   - Managed Policies:
-     - `arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy`
-     - `arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy`
-     - `arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly`
+### B. Dedicated Terraform-Created Roles
+1. **Cluster Role (`nexvion-eks-cluster-role`):** Trusted by `eks.amazonaws.com`, attached with `AmazonEKSClusterPolicy`.
+2. **Node Group Role (`nexvion-eks-node-group-role`):** Trusted by `ec2.amazonaws.com`, attached with `AmazonEKSWorkerNodePolicy`, `AmazonEKS_CNI_Policy`, and `AmazonEC2ContainerRegistryReadOnly`.
 
 ---
 
-## 4. EKS Add-ons & Kubernetes Version
+## 5. EKS Add-ons & Hardening Limitations
 
-- **Kubernetes Version:** `1.31` (Supported stable release in AWS EKS & Terraform AWS Provider v5.x).
+- **Kubernetes Version:** `1.32` (Standard Support release in 2026).
 - **Core Add-ons Declared:**
   - `vpc-cni`: AWS VPC CNI plugin for pod networking.
-  - `coredns`: Kubernetes DNS resolution service.
-  - `kube-proxy`: Network proxy on worker nodes.
-- **EBS CSI Driver (`aws-ebs-csi-driver`):** Deferred. Stateless NGINX web containers do not require persistent EBS storage volumes.
+  - `coredns`: Kubernetes DNS service.
+  - `kube-proxy`: Worker node network proxy.
+- **EBS CSI Driver (`aws-ebs-csi-driver`):** Deferred because the NGINX web workload is stateless.
+- **CNI Security Tradeoff Note:** `AmazonEKS_CNI_Policy` is attached directly to the worker node role. In high-security production clusters, IRSA (IAM Roles for Service Accounts) can isolate `aws-node` pod permissions to a dedicated IAM role. For this staging setup, attaching CNI policy to the node role is standard and avoids OIDC provider complexity.
 
 ---
 
-## 5. Terraform Safety Audit (Zero-Destruction Guarantee)
+## 6. Terraform Safety Audit (Zero-Destruction Guarantee)
 
-Running `terraform plan -out=phase-4-4-eks.tfplan` outputs:
+Execution of `terraform plan "-out=phase-4-4-eks.tfplan"` produces:
 
 ```text
 Plan: 13 to add, 0 to change, 0 to destroy.
@@ -169,7 +187,7 @@ Changes to Outputs:
   + eks_node_group_name           = "nexvion-node-group"
 ```
 
-### Infrastructure Safety Matrix
+### Shared Infrastructure Safety Matrix
 | Resource Type | Resource Identifier | Planned Action | Safety Status |
 |---|---|---|---|
 | EC2 Server | `i-057f6d6d0bbb33b37` (Jenkins/Ansible) | **NO CHANGE** | Preserved |
@@ -182,23 +200,31 @@ Changes to Outputs:
 
 ---
 
-## 6. Execution, Verification & Cost Cleanup Commands
+## 7. SAFE Targeted Cleanup Procedure
 
-### Provisioning (Only run when ready to test):
+> [!CAUTION]
+> **NEVER RUN A BLIND `terraform destroy`**
+> 
+> Running `terraform destroy` without target flags will destroy all imported shared infrastructure (EC2 `i-057f6d6d0bbb33b37`, EIP `52.66.25.69`, VPC, Subnets, ECR `nexvion-web`).
+
+### Safe Targeted Destruction Command:
+To teardown Phase 4.4 EKS resources after testing without impacting shared infrastructure, execute:
+
 ```bash
 cd terraform
-terraform apply "phase-4-4-eks.tfplan"
-```
 
-### Cluster Verification:
-```bash
-aws eks update-kubeconfig --region ap-south-1 --name nexvion-eks
-kubectl get nodes
-kubectl get pods -A
-```
-
-### Cost Teardown Command (Run immediately after testing to stop charges):
-```bash
-cd terraform
-terraform destroy -target=aws_eks_node_group.nexvion -target=aws_eks_cluster.nexvion -target=aws_eks_addon.coredns -target=aws_eks_addon.vpc_cni -target=aws_eks_addon.kube_proxy
+terraform destroy \
+  -target=aws_eks_addon.coredns \
+  -target=aws_eks_addon.kube_proxy \
+  -target=aws_eks_addon.vpc_cni \
+  -target=aws_eks_node_group.nexvion \
+  -target=aws_eks_cluster.nexvion \
+  -target=aws_iam_role_policy_attachment.eks_worker_node_policy \
+  -target=aws_iam_role_policy_attachment.eks_cni_policy \
+  -target=aws_iam_role_policy_attachment.eks_ecr_read_only \
+  -target=aws_iam_role_policy_attachment.eks_cluster_policy \
+  -target=aws_iam_role.eks_node_group \
+  -target=aws_iam_role.eks_cluster \
+  -target=aws_route_table_association.eks_public_a_assoc \
+  -target=aws_subnet.eks_public_a
 ```
