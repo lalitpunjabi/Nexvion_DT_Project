@@ -101,8 +101,8 @@
 - **ECR Image Artifact:** `677012863109.dkr.ecr.ap-south-1.amazonaws.com/nexvion-web:0d575d0` (Git SHA tag `0d575d0`).
 - **Workload Status:** `deployment.apps/nexvion-web` with 2/2 Ready running pods, UID/GID 101 non-root, read-only root filesystem.
 - **Service & Networking:** ClusterIP Service (`service/nexvion-web-service` on port 80/TCP) serving internally.
-- **Ingress Controller Status:** Ingress resource declared, but Ingress Controller is **currently not installed**; external traffic routing is deferred to Phase 4.6 (external access is currently not functional).
-- **HPA Status:** HPA is configured and deployed (2–5 replicas, 70% CPU target); CPU-based autoscaling requires Metrics Server, which is intentionally deferred to a later phase.
+- **Ingress Controller Status:** During Phase 4.5, the Ingress resource was declared but no Ingress Controller was installed. Ingress Controller deployment and NodePort routing were subsequently completed and validated in Phase 4.6.
+- **HPA Status:** During Phase 4.5, the HPA was configured but CPU metrics were unavailable. Metrics Server was subsequently installed and HPA CPU metrics were validated in Phase 4.6.
 - **Secret Management Status:** Kubernetes Secret contains **placeholder values only** (`API_KEY_PLACEHOLDER`, `SESSION_SECRET_PLACEHOLDER`) and is not production secret management (AWS Secrets Manager / ESO deferred).
 - **Application Endpoint Validation:** Internal HTTP validation via ClusterIP verified `/healthz` (200 OK), `/` (200 OK), `products.html` (200 OK), and `payment.html` (200 OK).
 - **Detailed Specification:** See [`docs/phase-4.5-eks-deployment.md`](docs/phase-4.5-eks-deployment.md).
@@ -111,9 +111,9 @@
 
 ## Phase 4.6 Overview: EKS Observability Metrics, HPA Validation & Ingress External Access
 - **Metrics Server Installed:** `metrics-server` deployed to `kube-system` namespace. Verified `kubectl top nodes` (`32m` CPU / `50%` RAM) and `kubectl top pods -n nexvion` (`1m` CPU per pod).
-- **Active HPA Metric Validation:** `horizontalpodautoscaler/nexvion-web-hpa` active with real CPU metric calculation (`cpu: 1%/70%`, `ScalingActive = True`). Controlled CPU load test validated replica calculations.
-- **Cost-Conscious Ingress Controller:** Installed `ingress-nginx` controller (v1.15.1) configured with `type: NodePort` (HTTP Port `31449`), avoiding $18.00+/mo billable AWS Load Balancers ($0.00 extra AWS cost).
-- **Ingress Endpoint Routing Verified:** `ingress.networking.k8s.io/nexvion-web-ingress` dynamically assigned address `10.100.51.190`. Validated 200 OK responses for `/healthz`, `/`, `products.html`, and `payment.html`.
+- **Active HPA Metric Validation:** `horizontalpodautoscaler/nexvion-web-hpa` active with real CPU metric calculation (`cpu: 1%/70%`, `ScalingActive = True`). Controlled load testing validated real CPU metric collection and HPA replica calculation.
+- **Cost-Conscious Ingress Controller:** Installed `ingress-nginx` controller (v1.15.1) configured with `type: NodePort` (HTTP Port `31449`, HTTPS Port `31941`), avoiding creation of a separate AWS Load Balancer and associated hourly/data-processing charges.
+- **Ingress Route & NodePort Validation:** `ingress.networking.k8s.io/nexvion-web-ingress` dynamically assigned address `10.100.51.190`. Validated 200 OK responses for `/healthz`, `/`, `products.html`, and `payment.html` internally via ClusterIP and against the EKS worker node's private VPC IP (`172.31.59.164:31449`). Public Internet exposure and DNS resolution were not validated; AWS ALB/NLB was intentionally omitted.
 - **Detailed Specification:** See [`docs/phase-4-6-metrics-hpa-external-access.md`](docs/phase-4-6-metrics-hpa-external-access.md).
 
 ---

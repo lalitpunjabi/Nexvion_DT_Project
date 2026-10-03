@@ -1,4 +1,4 @@
-# Production AWS EKS Overrides for nexvion-web Helm Chart
+# AWS EKS Overrides for the staging deployment
 # IMPORTANT: ECR repository URI and Git SHA tag will be supplied dynamically during Phase 4.4 / EKS deployment.
 
 namespace: nexvion
@@ -18,7 +18,7 @@ config:
 
 ingress:
   enabled: true
-  # In production EKS, update className to "alb" or "nginx" as per the active cluster ingress controller.
+  # Update className according to the active EKS ingress controller.
   className: nginx
   host: nexvion.example.com
   path: /
