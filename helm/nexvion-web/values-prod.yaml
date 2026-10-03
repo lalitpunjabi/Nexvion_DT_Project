@@ -13,7 +13,7 @@ image:
   pullPolicy: Always
 
 config:
-  environment: "production"
+  environment: "staging"
   logLevel: "warn"
 
 ingress:

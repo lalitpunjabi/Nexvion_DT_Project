@@ -11,32 +11,45 @@ The deployment pulls the immutable container image artifact (`677012863109.dkr.e
 ## Architecture Topology
 
 ```
+External Traffic
+      ↓
+Ingress Controller (NOT INSTALLED — Deferred to Phase 4.6)
+      ↓
+Ingress Resource (DECLARED — nexvion-web-ingress / host: nexvion.example.com)
+      ↓
+ClusterIP Service (nexvion-web-service — Internal Cluster IP: 10.100.27.163:80)
+      ↓
+Nexvion Pods (2/2 Ready Running Pods in namespace 'nexvion')
+```
+
+```
 +-------------------------------------------------------------------------------------------------------------------------+
 |                                              AMAZON AWS EKS CLUSTER (nexvion-eks)                                       |
 |                                                     Kubernetes v1.36.4                                                  |
 |                                                                                                                         |
+|  External Traffic                                                                                                       |
+|        │                                                                                                                |
+|        ▼                                                                                                                |
+|  [ Ingress Controller: NOT INSTALLED — Deferred to Phase 4.6 ]                                                          |
+|        │                                                                                                                |
+|        ▼                                                                                                                |
 |  +-------------------------------------------------------------------------------------------------------------------+  |
 |  | KUBERNETES NAMESPACE: nexvion                                                                                     |  |
 |  |                                                                                                                   |  |
+|  |   Ingress Resource (DECLARED ONLY — nexvion-web-ingress | Host: nexvion.example.com)                              |  |
+|  |        │                                                                                                          |  |
+|  |        ▼                                                                                                          |  |
+|  |   ClusterIP Service (nexvion-web-service — Port: 80/TCP | Internal IP: 10.100.27.163)                              |  |
+|  |        │                                                                                                          |  |
+|  |        ├───────────────────────────────────────┐                                                                  |  |
+|  |        ▼                                       ▼                                                                  |  |
 |  |  +-------------------------------------+  +-------------------------------------+                                 |  |
 |  |  | Pod 1: nexvion-web-78d49686cd-jtvbw   |  | Pod 2: nexvion-web-78d49686cd-qcnwx   |                                 |  |
 |  |  | Status: 1/1 Running                 |  | Status: 1/1 Running                 |                                 |  |
 |  |  | Non-root UID/GID: 101               |  | Non-root UID/GID: 101               |                                 |  |
 |  |  | Read-Only Root Filesystem           |  | Read-Only Root Filesystem           |                                 |  |
 |  |  +-------------------------------------+  +-------------------------------------+                                 |  |
-|  |                                     \        /                                                                    |  |
-|  |                                      \      /                                                                     |  |
-|  |                             +--------------------------+                                                          |  |
-|  |                             | ClusterIP Service        |                                                          |  |
-|  |                             | nexvion-web-service      |                                                          |  |
-|  |                             | Port: 80/TCP             |                                                          |  |
-|  |                             +--------------------------+                                                          |  |
-|  |                                          ^                                                                        |  |
-|  |                                          |                                                                        |  |
-|  |                             +--------------------------+                                                          |  |
-|  |                             | Ingress Resource         |                                                          |  |
-|  |                             | nexvion.example.com      |                                                          |  |
-|  |                             +--------------------------+                                                          |  |
+|  |                                                                                                                   |  |
 |  +-------------------------------------------------------------------------------------------------------------------+  |
 +-------------------------------------------------------------------------------------------------------------------------+
 ```
@@ -68,10 +81,10 @@ The deployment pulls the immutable container image artifact (`677012863109.dkr.e
 | **Deployment** | `deployment.apps/nexvion-web` | 2/2 ready replicas, RollingUpdate (`maxSurge: 1`, `maxUnavailable: 0`) | **2/2 Ready** |
 | **Pods** | `pod/nexvion-web-78d49686cd-*` | 2 running pods, UID 101 non-root, read-only FS, tmpfs mounts | **1/1 Running** |
 | **Service** | `service/nexvion-web-service` | `ClusterIP` (Internal IP: `10.100.27.163`, Port: 80/TCP) | Active |
-| **ConfigMap** | `configmap/nexvion-web-config` | Environment variables (`APP_NAME`, `ENVIRONMENT=production`, `LOG_LEVEL=warn`) | Active |
-| **Secret** | `secret/nexvion-web-secret` | Non-sensitive staging demo secrets (`API_KEY_PLACEHOLDER`, `SESSION_SECRET_PLACEHOLDER`) | Active |
-| **HPA** | `horizontalpodautoscaler/nexvion-web-hpa` | Autoscaling range 2-5 replicas targeting 70% CPU utilization | Created |
-| **Ingress** | `ingress.networking.k8s.io/nexvion-web-ingress` | Host: `nexvion.example.com`, Class: `nginx`, Path: `/` | Declared |
+| **ConfigMap** | `configmap/nexvion-web-config` | Environment variables (`APP_NAME`, `ENVIRONMENT=staging`, `LOG_LEVEL=warn`) | Active |
+| **Secret** | `secret/nexvion-web-secret` | Staging placeholder values only (`API_KEY_PLACEHOLDER`, `SESSION_SECRET_PLACEHOLDER`); not production secret management | **Placeholder Only** |
+| **HPA** | `horizontalpodautoscaler/nexvion-web-hpa` | Autoscaling range 2-5 replicas targeting 70% CPU utilization; CPU metrics unavailable (Metrics Server deferred) | **Deployed (Metrics Deferred)** |
+| **Ingress** | `ingress.networking.k8s.io/nexvion-web-ingress` | Host: `nexvion.example.com`, Class: `nginx`, Path: `/`; controller not installed | **Declared (Controller Deferred)** |
 
 ---
 
@@ -107,10 +120,27 @@ Internal HTTP request validation executed against `service/nexvion-web-service` 
 
 ---
 
-## 5. Ingress & HPA Dependency Disclosures
+## 5. Architectural Disclosures & Deferred Components
 
-1. **Ingress Dependency (Avoided Billable ALB/NLB):** The Service is maintained as `ClusterIP` to avoid creating billable AWS Load Balancers ($18.00+/month base charge) during staging. The Ingress resource (`nexvion-web-ingress`) is declared in the chart, but external traffic routing requires an `ingress-nginx` controller or AWS Load Balancer Controller, which is intentionally deferred to Phase 4.6.
-2. **HPA Metrics-Server Dependency:** The `HorizontalPodAutoscaler` is successfully declared in Kubernetes. Metric collection (`cpu: <unknown>/70%`) requires `metrics-server` to be installed on the cluster, which is intentionally deferred to avoid unneeded staging background overhead.
+1. **Ingress Controller & External Traffic Routing (Deferred to Phase 4.6):**
+   - Flow: `External Traffic` → `Ingress Controller (NOT INSTALLED)` → `Ingress Resource (DECLARED)` → `ClusterIP Service` → `Nexvion Pods`.
+   - The Service is maintained as `ClusterIP` to avoid creating billable AWS Load Balancers ($18.00+/month base charge) during staging.
+   - The Ingress resource (`nexvion-web-ingress`) is declared in the Helm chart, but the Ingress Controller (`ingress-nginx` or AWS Load Balancer Controller) is **currently not installed**. External traffic routing is intentionally deferred to Phase 4.6.
+   - **External access is currently not functional** and cannot route public HTTP traffic into the cluster. Internal health and endpoint validation are performed directly via ClusterIP.
+
+2. **HPA & Metrics-Server Dependency:**
+   - HPA is configured and deployed; CPU-based autoscaling requires Metrics Server, which is intentionally deferred to a later phase.
+   - Configuration parameters: minimum 2 replicas, maximum 5 replicas, CPU target 70%.
+   - CPU metrics are currently unavailable (`cpu: <unknown>/70%`) because Metrics Server has not been installed on the cluster.
+   - Therefore, HPA configuration exists, but active CPU-based autoscaling has **NOT yet been validated**.
+
+3. **Secret Management Disclosure (Placeholder Values Only):**
+   - The current Kubernetes Secret (`secret/nexvion-web-secret`) contains **PLACEHOLDER/demo values only** (`API_KEY_PLACEHOLDER`, `SESSION_SECRET_PLACEHOLDER`) and is **NOT** production secret management.
+   - Real production secrets should later be injected securely using an appropriate mechanism such as:
+     - AWS Secrets Manager
+     - External Secrets Operator (ESO)
+     - Secure CI/CD secret injection
+   - Real credentials or secrets are intentionally omitted for security and staging cost management.
 
 ---
 

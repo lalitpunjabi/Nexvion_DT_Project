@@ -98,8 +98,11 @@
 - **Helm Release Deployed:** `nexvion-web` deployed to namespace `nexvion` on live AWS EKS cluster (`nexvion-eks` v1.36.4).
 - **ECR Image Artifact:** `677012863109.dkr.ecr.ap-south-1.amazonaws.com/nexvion-web:0d575d0` (Git SHA tag `0d575d0`).
 - **Workload Status:** `deployment.apps/nexvion-web` with 2/2 Ready running pods, UID/GID 101 non-root, read-only root filesystem.
-- **Service & Networking:** ClusterIP Service (`service/nexvion-web-service` on port 80/TCP) serving internally. External load balancer (ALB/NLB) intentionally omitted to save ~$18.00/mo staging charges.
-- **Application Endpoint Validation:** `/healthz` (200 OK), `/` (200 OK), `products.html` (200 OK), and `payment.html` (200 OK) verified internally.
+- **Service & Networking:** ClusterIP Service (`service/nexvion-web-service` on port 80/TCP) serving internally.
+- **Ingress Controller Status:** Ingress resource declared, but Ingress Controller is **currently not installed**; external traffic routing is deferred to Phase 4.6 (external access is currently not functional).
+- **HPA Status:** HPA is configured and deployed (2–5 replicas, 70% CPU target); CPU-based autoscaling requires Metrics Server, which is intentionally deferred to a later phase.
+- **Secret Management Status:** Kubernetes Secret contains **placeholder values only** (`API_KEY_PLACEHOLDER`, `SESSION_SECRET_PLACEHOLDER`) and is not production secret management (AWS Secrets Manager / ESO deferred).
+- **Application Endpoint Validation:** Internal HTTP validation via ClusterIP verified `/healthz` (200 OK), `/` (200 OK), `products.html` (200 OK), and `payment.html` (200 OK).
 - **Detailed Specification:** See [`docs/phase-4.5-eks-deployment.md`](docs/phase-4.5-eks-deployment.md).
 
 ---
