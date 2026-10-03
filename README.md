@@ -16,7 +16,7 @@
 │      IGW, Route Table, Security Group, EC2, Elastic IP, and EIP Association             │
 │    - Ansible Configuration (`ansible/`): System hardening, Docker Engine, Jenkins      │
 ├────────────────────────────────────────────────────────────────────────────────────────┤
-│ 4. KUBERNETES, HELM, ECR, EKS & WORKLOAD DEPLOYMENT (Phase 4.1 - 4.7 Implemented)      │
+│ 4. KUBERNETES, HELM, ECR, EKS & WORKLOAD DEPLOYMENT (Phase 4.1 - 4.8 Implemented)      │
 │    - Phase 4.1 Raw Manifests (`kubernetes/`): Namespace, ConfigMap, Secret,            │
 │      Deployment, Service, Ingress, HPA (Validated on Minikube)                          │
 │    - Phase 4.2 Helm Packaging (`helm/nexvion-web/`): Templated Helm 3 Chart with      │
@@ -31,6 +31,8 @@
 │      active CPU HPA metric calculation, and cost-conscious NodePort ingress routing     │
 │    - Phase 4.7 Prometheus & Grafana Observability (`helm/monitoring/`): Prometheus     │
 │      metrics scraper and Grafana platform overview dashboards verified live             │
+│    - Phase 4.8 ELK Centralized Logging (`helm/logging/`): Fluent Bit, single-node       │
+│      Elasticsearch, and Kibana log search/visualization validated end-to-end             │
 └────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -126,7 +128,17 @@
 - **PromQL Metrics Scraped & Validated:** Verified live collection for node CPU/RAM usage, `nexvion-web` pod CPU/RAM, deployment replicas (`2` available), HPA replicas (`2` current), and node readiness (`1` node ready).
 - **Resource & Cost Optimization:** Observability workloads run on existing EKS worker node capacity to avoid separate AWS managed service charges (EKS control plane and worker node costs apply).
 - **Workload & Ingress Preserved:** `deployment.apps/nexvion-web` (2/2 Ready), HPA (`cpu: 1%/70%`), and `ingress-nginx` NodePort routing remain 100% active and healthy.
-- **Detailed Specification:** See [`docs/phase-4-7-prometheus-grafana.md`](docs/phase-4-7-prometheus-grafana.md).
+---
+
+## Phase 4.8 Overview: ELK Centralized Logging
+- **Fluent Bit Deployed:** `fluent/fluent-bit` (v2.2.0) deployed as a DaemonSet in namespace `logging` with CRI container log parsing and Kubernetes metadata enrichment.
+- **Elasticsearch Deployed:** Lightweight single-node `docker.elastic.co/elasticsearch/elasticsearch:7.17.18` deployed in namespace `logging` with low JVM heap limits (`-Xms128m -Xmx128m`) tailored for `t3.small` resource safety.
+- **Kibana Deployed:** `docker.elastic.co/kibana/kibana:7.17.18` deployed in namespace `logging` connected to Elasticsearch with Node.js memory safety (`--max-old-space-size=256`).
+- **Kubernetes Logs Centralized & Searchable:** Container logs across all namespaces automatically ingested into index `nexvion-logs-YYYY.MM.DD` with metadata (`pod`, `namespace`, `container`, `host`, `timestamp`).
+- **End-to-End Validation Success:** Generated unique workload log string `NEXVION_ELK_VERIFIED_LOG_20261004` from Nexvion workload `nexvion-web`, verified ingestion by Fluent Bit into Elasticsearch index, and queried log directly via REST API and Kibana status API.
+- **Resource-Conscious Staging Architecture:** Elasticsearch and Kibana co-located within `elk` deployment taking 1 pod slot to adhere strictly to `t3.small` 11 max-pod node limits without destroying existing workloads.
+- **Detailed Specification:** See [`docs/phase-4-8-elk-centralized-logging.md`](docs/phase-4-8-elk-centralized-logging.md).
+- **Next Phase:** Phase 4.9 — AI-Assisted Incident Analysis is next.
 
 ---
 

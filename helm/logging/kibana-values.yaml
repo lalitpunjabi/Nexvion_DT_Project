@@ -1,0 +1,28 @@
+# Kibana Staging Helm / Declarative Configuration Values
+# Target: Lightweight Kibana deployment connected to single-node Elasticsearch
+
+elasticsearchHosts: "http://elasticsearch.logging.svc.cluster.local:9200"
+
+replicas: 1
+
+# Resource requests and limits
+resources:
+  requests:
+    cpu: "50m"
+    memory: "128Mi"
+  limits:
+    cpu: "200m"
+    memory: "256Mi"
+
+# Service configuration (Internal ClusterIP only)
+service:
+  type: ClusterIP
+  port: 5601
+
+# Security settings
+kibanaConfig:
+  kibana.yml: |
+    server.name: kibana
+    server.host: "0.0.0.0"
+    elasticsearch.hosts: [ "http://elasticsearch.logging.svc.cluster.local:9200" ]
+    xpack.security.enabled: false

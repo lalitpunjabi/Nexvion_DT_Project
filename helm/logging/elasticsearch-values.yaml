@@ -1,0 +1,34 @@
+# Elasticsearch Staging Helm / Declarative Configuration Values
+# Target: Single-node lightweight staging deployment on t3.small EKS worker node
+
+clusterName: "elasticsearch"
+nodeGroup: "master"
+
+# Single-node staging setup
+roles:
+  master: "true"
+  data: "true"
+  ingest: "true"
+
+replicas: 1
+
+# Low JVM heap configuration for t3.small resource safety
+esJavaOpts: "-Xms128m -Xmx128m"
+
+# Resource requests and limits tailored to fit alongside Nexvion & Prometheus workloads
+resources:
+  requests:
+    cpu: "100m"
+    memory: "192Mi"
+  limits:
+    cpu: "300m"
+    memory: "384Mi"
+
+# Ephemeral storage for staging demonstration (no AWS EBS cost)
+persistence:
+  enabled: false
+
+# Security settings
+xpack:
+  security:
+    enabled: false
