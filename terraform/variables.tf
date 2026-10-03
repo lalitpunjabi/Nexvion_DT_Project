@@ -68,9 +68,9 @@ variable "eks_cluster_version" {
 }
 
 variable "eks_subnet_cidr_a" {
-  description = "CIDR block for the additional EKS public subnet in ap-south-1a"
+  description = "CIDR block for the additional EKS public subnet in ap-south-1a (non-overlapping 172.31.48.0/20)"
   type        = string
-  default     = "172.31.16.0/20"
+  default     = "172.31.48.0/20"
 }
 
 variable "eks_az_a" {
@@ -94,7 +94,7 @@ variable "eks_node_instance_types" {
 variable "eks_desired_capacity" {
   description = "Desired number of worker nodes"
   type        = number
-  default     = 2
+  default     = 1
 }
 
 variable "eks_min_capacity" {
@@ -106,6 +106,6 @@ variable "eks_min_capacity" {
 variable "eks_max_capacity" {
   description = "Maximum number of worker nodes"
   type        = number
-  default     = 3
+  default     = 2
 }
 

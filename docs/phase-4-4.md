@@ -12,10 +12,11 @@ This architecture safely extends the existing Nexvion AWS environment without mo
 > This configuration is structured as a **COST-CONSTRAINED STAGING / LAB ARCHITECTURE** for internship and development testing.
 >
 > 1. **EKS Control Plane Charges:** AWS charges **$0.10 per hour (~$73.00/month)** for the EKS control plane (`aws_eks_cluster.nexvion`). The EKS control plane is **NOT** covered by the AWS Free Tier.
-> 2. **Kubernetes Version & Extended Support Surcharge Avoidance:** Configured with Kubernetes **1.36** (Standard Support). Standard Support avoids AWS Extended Support surcharges ($0.60/hr extra charged for deprecated/extended releases such as 1.31, 1.32, and 1.33).
+> 2. **Kubernetes Version & Standard Support:** Configured with Kubernetes **1.36** (Standard Support). Standard Support avoids AWS Extended Support surcharges ($0.60/hr extra charged for deprecated/extended releases such as 1.31, 1.32, and 1.33).
 > 3. **Account-Specific Eligibility:** Service items below are marked as *potentially billable; verify current account-specific Free Tier eligibility*.
-> 4. **Zero Automatic Apply:** `terraform apply` is **NOT** run automatically. To prevent unexpected AWS bills, the cluster should only be provisioned on-demand when actively testing.
-> 5. **Safe Cleanup Procedure:** Never run a blind `terraform destroy` without target flags, as doing so would destroy your imported shared infrastructure. Follow the safe targeted cleanup procedure below.
+> 4. **Initial Node Sizing:** Configured with **1 x `t3.small`** worker node (`desired_size = 1`, `min_size = 1`, `max_size = 2`) to minimize initial EC2 compute costs while remaining scalable.
+> 5. **Zero Automatic Apply:** `terraform apply` is **NOT** run automatically.
+> 6. **Safe Cleanup Procedure:** Never run a blind `terraform destroy` without target flags, as doing so would destroy your imported shared infrastructure. Follow the safe targeted cleanup procedure below.
 
 ---
 
@@ -28,11 +29,11 @@ This architecture safely extends the existing Nexvion AWS environment without mo
 |                                                                                                                         |
 |  +-------------------------------------------------------------+  +---------------------------------------------------+  |
 |  | Existing Public Subnet (subnet-048f480df580a47f8)           |  | New Public Subnet (aws_subnet.eks_public_a)       |  |
-|  | AZ: ap-south-1b | CIDR: 172.31.0.0/20                       |  | AZ: ap-south-1a | CIDR: 172.31.16.0/20             |  |
+|  | AZ: ap-south-1b | CIDR: 172.31.0.0/20                       |  | AZ: ap-south-1a | CIDR: 172.31.48.0/20             |  |
 |  |                                                             |  |                                                   |  |
 |  |  +---------------------------+  +------------------------+  |  |  +---------------------------------------------+  |  |
-|  |  | Jenkins / Ansible EC2     |  | EKS Worker Nodes       |  |  |  | EKS Worker Nodes                            |  |  |
-|  |  | i-057f6d6d0bbb33b37       |  | (t3.small, Node Group)|  |  |  | (t3.small, Node Group)                     |  |  |
+|  |  | Jenkins / Ansible EC2     |  | EKS Worker Node        |  |  |  | EKS Worker Node                             |  |  |
+|  |  | i-057f6d6d0bbb33b37       |  | (t3.small, Node Group) |  |  |  | (t3.small, Node Group)                      |  |  |
 |  |  | EIP: 52.66.25.69          |  |                        |  |  |  |                                             |  |  |
 |  |  +---------------------------+  +------------------------+  |  |  +---------------------------------------------+  |  |
 |  +-------------------------------------------------------------+  +---------------------------------------------------+  |
@@ -41,75 +42,77 @@ This architecture safely extends the existing Nexvion AWS environment without mo
 |                                 +----------------------------------+                                                    |
 |                                 | Amazon EKS Control Plane         |                                                    |
 |                                 | Cluster Name: nexvion-eks        |                                                    |
-|                                 | Kubernetes Version: 1.34         |                                                    |
+|                                 | Kubernetes Version: 1.36         |                                                    |
 |                                 +----------------------------------+                                                    |
 +-------------------------------------------------------------------------------------------------------------------------+
 ```
 
 ---
 
-## 1. Kubernetes Version & Support Status
+## 1. Subnet Discovery & Non-Overlapping CIDR Selection
+
+An AWS CLI discovery of existing subnets in VPC `vpc-09df3f5fdabdcf81f` revealed:
+
+```text
++---------------------------+--------------+-----------------+------------+
+| SubnetId                  | AZ           | CidrBlock       | State      |
++---------------------------+--------------+-----------------+------------+
+| subnet-048f480df580a47f8  | ap-south-1b  | 172.31.0.0/20   | available  |
+| subnet-01b935ef8f0931396  | ap-south-1c  | 172.31.16.0/20  | available  |
+| subnet-0be45e1e52c618a4f  | ap-south-1a  | 172.31.32.0/20  | available  |
++---------------------------+--------------+-----------------+------------+
+```
+
+- **Conflict Analysis:** CIDR `172.31.16.0/20` was already allocated to default subnet `subnet-01b935ef8f0931396` in `ap-south-1c`, causing initial subnet creation failure (`InvalidSubnet.Conflict`).
+- **Selected Non-Overlapping CIDR:** **`172.31.48.0/20`** (Range: `172.31.48.0` – `172.31.63.255`).
+- **AZ Placement:** `ap-south-1a` (Satisfies EKS multi-AZ requirement alongside `ap-south-1b` without overlapping existing subnet ranges).
+
+---
+
+## 2. Kubernetes Version & Support Status
 
 - **Selected Kubernetes Version:** `1.36`
 - **AWS EKS Support Status:** **Standard Support**
 - **Support Status Breakdown:**
-  - `1.36` — Standard Support
+  - `1.36` — **Standard Support (Selected)**
   - `1.35` — Standard Support
-  - `1.34` — **Standard Support (Selected)**
-  - `1.33` — Extended Support (Incurs +$0.60/hr surcharge)
-  - `1.32` — Extended Support (Incurs +$0.60/hr surcharge)
-  - `1.31` — Extended Support (Incurs +$0.60/hr surcharge)
-- **Selection Rationale:** Choosing Kubernetes `1.36` ensures standard support on Amazon EKS, avoiding the $0.60/hour Extended Support surcharge while maintaining compatibility with core Kubernetes workloads and EKS add-ons.
+  - `1.34` — Standard Support
+  - `1.33` — Extended Support (Incurs +$0.60/hr Extended Support surcharge)
+  - `1.32` — Extended Support (Incurs +$0.60/hr Extended Support surcharge)
+  - `1.31` — Extended Support (Incurs +$0.60/hr Extended Support surcharge)
+- **Selection Rationale:** Choosing Kubernetes `1.36` ensures standard support on Amazon EKS, avoiding the $0.60/hour Extended Support surcharge while maintaining compatibility with core Kubernetes workloads and EKS add-ons (`vpc-cni`, `coredns`, `kube-proxy`).
 
 ---
 
-## 2. Detailed Cost Analysis & Account-Aware Classification
+## 3. Detailed Cost Analysis & Account-Aware Classification
 
 | Service / Resource | Resource Identifier | Cost Classification | Estimated Monthly Cost | Architecture Notes & Account Eligibility |
 |---|---|---|---|---|
 | **EKS Control Plane** | `aws_eks_cluster.nexvion` (`nexvion-eks`) | **MUST INCUR CHARGES** | ~$73.00 / month ($0.10/hr) | **Not covered by AWS Free Tier.** Standard Support (v1.36) avoids $0.60/hr Extended Support penalty. |
-| **EC2 Worker Nodes** | `aws_eks_node_group.nexvion` (2x `t3.small`) | **POTENTIALLY BILLABLE** | ~$60.00 / month ($0.0416/hr x 2) | *Potentially billable; verify current account-specific Free Tier eligibility*. `t3.small` (4GB RAM) supports CNI/CoreDNS. `t3.small` can be configured via `variables.tf`. |
+| **EC2 Worker Nodes** | `aws_eks_node_group.nexvion` (1x `t3.small`) | **POTENTIALLY BILLABLE** | ~$15.00 / month ($0.0208/hr x 1) | *Potentially billable; verify current account-specific Free Tier eligibility*. `t3.small` (2GB RAM) supports CNI/CoreDNS. Initial deployment set to 1 node (`desired_size = 1`). |
 | **Public IPv4 Addresses** | Node public IPs & EC2 EIP | **POTENTIALLY BILLABLE** | ~$3.60 / month per IP ($0.005/hr) | Standard AWS public IPv4 charge (effective Feb 2024). *Potentially billable; verify account eligibility*. |
-| **EBS Storage Volumes** | Worker node root EBS volumes | **POTENTIALLY BILLABLE** | $0.00 – $3.20 / month | 20 GB root EBS volume per node. *Potentially billable if cumulative account storage exceeds 30 GB/mo gp2/gp3 Free Tier limit*. |
+| **EBS Storage Volumes** | Worker node root EBS volumes | **POTENTIALLY BILLABLE** | $0.00 – $1.60 / month | 20 GB root EBS volume per node. *Potentially billable if cumulative account storage exceeds 30 GB/mo gp2/gp3 Free Tier limit*. |
 | **Amazon ECR Storage** | `aws_ecr_repository.nexvion` (`nexvion-web`) | **POTENTIALLY BILLABLE** | $0.00 – $0.50 / month | Includes 500 MB storage/month in Free Tier; excess is $0.10/GB-mo. |
 | **NAT Gateway** | N/A | **AVOIDED ($0.00)** | **$0.00 (Omitted)** | **Intentionally omitted** to save ~$32.00/mo per NAT GW. Worker nodes run in public subnets with IGW routes. |
 | **Application Load Balancer** | N/A | **AVOIDED ($0.00)** | **$0.00 (Omitted)** | **Intentionally omitted** for Phase 4.4 to prevent $18.00/mo ALB base charge. |
 
 ---
 
-## 3. Worker Node Cost Settings & Sizing Tradeoffs
+## 4. Worker Node Sizing & Initial Deployment Configuration
 
-Worker node parameters are fully configurable in `terraform/variables.tf`:
-- `eks_node_instance_types` (default: `["t3.small"]`)
-- `eks_desired_capacity` (default: `2`)
-- `eks_min_capacity` (default: `1`)
-- `eks_max_capacity` (default: `3`)
+Worker node parameters in `terraform/variables.tf`:
+- `eks_node_instance_types` = `["t3.small"]`
+- `eks_desired_capacity` = `1` (Initial Free Tier / cost-conscious deployment)
+- `eks_min_capacity` = `1`
+- `eks_max_capacity` = `2`
 
-### Availability vs. Cost Tradeoff Analysis:
-1. **Single Worker Node (`desired_size = 1`):**
-   - **Cost:** Lower cost (~$15.00/mo for 1x `t3.small`).
-   - **Availability:** Lower availability. Worker node restart or maintenance results in total cluster pod downtime. Multi-AZ pod scheduling is disabled.
-2. **Dual Worker Nodes (`desired_size = 2` - Current Default):**
-   - **Cost:** Higher cost (~$30.00/mo for 2x `t3.small`).
-   - **Availability:** High availability. Pods are distributed across Availability Zones (`ap-south-1a` and `ap-south-1b`), enabling zero-downtime rolling updates and high availability evaluation.
-   - **Justification for Internship Staging:** Defaulting to `desired_size = 2` validates production multi-AZ pod scheduling, while allowing simple override to `desired_size = 1` via `-var="eks_desired_capacity=1"` for minimal cost testing.
+### Sizing & Availability Justification:
+- **Initial Deployment (1x `t3.small`):** Reduces EC2 compute cost to ~$15.00/month for initial EKS validation while leaving headroom for system pods (CNI, CoreDNS, kube-proxy).
+- **Scalability:** The cluster can be scaled to 2 nodes (`desired_size = 2`) for multi-AZ pod scheduling and zero-downtime rolling update demonstrations via `-var="eks_desired_capacity=2"`.
 
 ---
 
-## 4. EKS Networking Review (Cost-Saving Staging Design)
-
-- **VPC Preservation:** Reuses existing VPC `vpc-09df3f5fdabdcf81f` (`172.31.0.0/16`).
-- **Multi-AZ Subnets:**
-  - **AZ 1 (`ap-south-1b`):** Reuses existing public subnet (`subnet-048f480df580a47f8`, CIDR `172.31.0.0/20`).
-  - **AZ 2 (`ap-south-1a`):** Provisions additional public subnet (`aws_subnet.eks_public_a`, CIDR `172.31.16.0/20`) attached to existing route table (`rtb-0b5c00adb98133d97`) and Internet Gateway (`igw-045a89bde29483b3a`).
-- **Subnet Tagging for EKS Discovery:**
-  - `kubernetes.io/cluster/nexvion-eks = shared`
-  - `kubernetes.io/role/elb = 1`
-- **NAT Gateway Omission Rationale:** Running worker nodes in public subnets directly connected to the Internet Gateway avoids dual NAT Gateway charges (~$64.00/month). Worker nodes assign public IPv4 addresses to communicate with ECR and EKS control plane endpoints directly.
-
----
-
-## 5. IAM Provisioning Permissions & Role Design
+## 5. IAM Provisioning Permissions & Required Custom Policy
 
 ### A. Pre-Attached Policies vs. Required Custom Policy for User `Nexvion`
 
@@ -117,7 +120,7 @@ The IAM user `arn:aws:iam::677012863109:user/Nexvion` has the following pre-atta
 - **`AmazonEC2FullAccess`:** Grants permissions for VPCs, Subnets, Route Tables, Internet Gateways, Security Groups, and EC2 instances.
 - **`AmazonEC2ContainerRegistryFullAccess`:** Grants permissions for ECR repository management and image pushing.
 
-To provision EKS and IAM roles via Terraform without granting `AdministratorAccess`, attach the following **additional custom IAM policy** to user `Nexvion`:
+To resolve initial `iam:TagRole` access errors and provision EKS without granting `AdministratorAccess`, attach the following **additional custom IAM policy** to user `Nexvion` in the AWS IAM Console:
 
 ```json
 {
@@ -154,6 +157,8 @@ To provision EKS and IAM roles via Terraform without granting `AdministratorAcce
         "iam:GetRole",
         "iam:DeleteRole",
         "iam:PassRole",
+        "iam:TagRole",
+        "iam:UntagRole",
         "iam:AttachRolePolicy",
         "iam:DetachRolePolicy",
         "iam:ListAttachedRolePolicies",
@@ -175,15 +180,12 @@ To provision EKS and IAM roles via Terraform without granting `AdministratorAcce
 
 ---
 
-## 6. EKS Add-ons & Hardening Limitations
+## 6. Partial Apply Failure & State Analysis
 
-- **Kubernetes Version:** `1.36` (Standard Support release).
-- **Core Add-ons Declared:**
-  - `vpc-cni`: AWS VPC CNI plugin for pod networking (compatible with K8s 1.36).
-  - `coredns`: Kubernetes DNS service (compatible with K8s 1.36).
-  - `kube-proxy`: Worker node network proxy (compatible with K8s 1.36).
-- **EBS CSI Driver (`aws-ebs-csi-driver`):** Deferred because the NGINX web workload is stateless.
-- **CNI Security Tradeoff Note:** `AmazonEKS_CNI_Policy` is attached directly to the worker node role. In high-security production clusters, IRSA (IAM Roles for Service Accounts) can isolate `aws-node` pod permissions to a dedicated IAM role. For this staging setup, attaching CNI policy to the node role is standard and avoids OIDC provider complexity.
+- **Initial Apply Error 1:** Subnet creation failed due to CIDR overlap on `172.31.16.0/20`.
+- **Initial Apply Error 2:** IAM role tagging failed due to missing `iam:TagRole` on user `Nexvion`.
+- **Partial State Verification:** Inspection via AWS CLI confirmed that **no partially created resources** (`nexvion-eks-cluster-role`, `nexvion-eks-node-group-role`, or `nexvion-eks-public-a`) exist in AWS.
+- **Import Requirement:** **0 imports required.** Terraform will cleanly create all 13 Phase 4.4 resources once permissions are updated.
 
 ---
 
