@@ -41,7 +41,7 @@ data:
     [SERVICE]
         Daemon       Off
         Flush        1
-        Log_Level    debug
+        Log_Level    info
         Parsers_File parsers.conf
 
     [INPUT]

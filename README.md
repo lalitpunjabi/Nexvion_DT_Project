@@ -131,12 +131,13 @@
 ---
 
 ## Phase 4.8 Overview: ELK Centralized Logging
-- **Fluent Bit Deployed:** `fluent/fluent-bit` (v2.2.0) deployed as a DaemonSet in namespace `logging` with CRI container log parsing and Kubernetes metadata enrichment.
+- **Declarative Manifests & Values:** Maintained under `helm/logging/` using declarative Kubernetes manifests (`elk-stack.yaml`, `fluent-bit.yaml`) and Helm-oriented configuration values (the primary Helm chart remains `helm/nexvion-web`).
+- **Fluent Bit Deployed:** `fluent/fluent-bit` (v2.2.0) DaemonSet deployed in namespace `logging` with `Log_Level info`, CRI log parsing, and Kubernetes metadata enrichment.
 - **Elasticsearch Deployed:** Lightweight single-node `docker.elastic.co/elasticsearch/elasticsearch:7.17.18` deployed in namespace `logging` with low JVM heap limits (`-Xms128m -Xmx128m`) tailored for `t3.small` resource safety.
 - **Kibana Deployed:** `docker.elastic.co/kibana/kibana:7.17.18` deployed in namespace `logging` connected to Elasticsearch with Node.js memory safety (`--max-old-space-size=256`).
-- **Kubernetes Logs Centralized & Searchable:** Container logs across all namespaces automatically ingested into index `nexvion-logs-YYYY.MM.DD` with metadata (`pod`, `namespace`, `container`, `host`, `timestamp`).
-- **End-to-End Validation Success:** Generated unique workload log string `NEXVION_ELK_VERIFIED_LOG_20261004` from Nexvion workload `nexvion-web`, verified ingestion by Fluent Bit into Elasticsearch index, and queried log directly via REST API and Kibana status API.
-- **Resource-Conscious Staging Architecture:** Elasticsearch and Kibana co-located within `elk` deployment taking 1 pod slot to adhere strictly to `t3.small` 11 max-pod node limits without destroying existing workloads.
+- **Security Scope:** Staging authentication disabled (`xpack.security.enabled=false`); strictly isolated via internal `ClusterIP` services (ports 9200/5601) with zero public exposure (production deployments must enable authentication and secret injection).
+- **AWS Cost Alignment:** No separate AWS OpenSearch, ALB, EBS volume, or extra node provisioned; operates on existing EKS worker capacity while standard EKS control plane and node charges apply.
+- **End-to-End Log Validation:** Generated unique workload log string `NEXVION_ELK_VERIFIED_LOG_20261004` from Nexvion workload `nexvion-web`, verified ingestion by Fluent Bit into Elasticsearch index `nexvion-logs-YYYY.MM.DD`, and queried log directly via REST API and Kibana status API.
 - **Detailed Specification:** See [`docs/phase-4-8-elk-centralized-logging.md`](docs/phase-4-8-elk-centralized-logging.md).
 - **Next Phase:** Phase 4.9 — AI-Assisted Incident Analysis is next.
 

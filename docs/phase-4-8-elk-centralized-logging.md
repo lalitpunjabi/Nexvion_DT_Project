@@ -69,8 +69,9 @@ The logging architecture uses an industry-standard pipeline optimized for single
 
 ## 5. Fluent Bit Configuration
 
-Declarative manifests are stored in `helm/logging/fluent-bit.yaml` and `helm/logging/fluent-bit-values.yaml`:
+Declarative Kubernetes logging manifests and Helm-oriented configuration values are maintained under `helm/logging/` (`fluent-bit.yaml` and `fluent-bit-values.yaml`):
 
+- **Log Level**: Set to `Log_Level info` for clean production-style container logging without debug noise.
 - **DaemonSet Resource Budget**:
   - CPU Request: `20m`, Limit: `100m`
   - Memory Request: `30Mi`, Limit: `64Mi`
@@ -82,22 +83,22 @@ Declarative manifests are stored in `helm/logging/fluent-bit.yaml` and `helm/log
 
 ## 6. Elasticsearch Configuration
 
-Declarative manifests are stored in `helm/logging/elk-stack.yaml` and `helm/logging/elasticsearch-values.yaml`:
+Declarative Kubernetes logging manifests and Helm-oriented configuration values are maintained under `helm/logging/` (`elk-stack.yaml` and `elasticsearch-values.yaml`):
 
 - **Deployment Mode**: Single-node staging (`discovery.type=single-node`).
 - **JVM Heap Allocation**: Explicitly limited via `ES_JAVA_OPTS="-Xms128m -Xmx128m"` to ensure stability on `t3.small`.
-- **Security**: Security plugin disabled (`xpack.security.enabled=false`) for staging convenience.
+- **Security Scope**: Security plugin disabled (`xpack.security.enabled=false`) for staging/demo purposes. Exposed solely via internal `ClusterIP` (`9200`).
 - **Service Spec**: `ClusterIP` with `publishNotReadyAddresses: true` so logging ingestion can proceed immediately upon Elasticsearch startup.
 - **Resource Limits**:
   - CPU Request: `100m`, Limit: `300m`
   - Memory Request: `256Mi`, Limit: `512Mi`
-- **Storage Strategy**: Ephemeral in-pod overlay storage. No AWS EBS volumes or managed OpenSearch clusters are created, incurring zero extra AWS storage fees.
+- **Storage Strategy**: Ephemeral in-pod overlay storage. No AWS EBS volumes or managed OpenSearch clusters are created, avoiding extra AWS managed service fees.
 
 ---
 
 ## 7. Kibana Configuration
 
-Declarative manifests are stored in `helm/logging/elk-stack.yaml` and `helm/logging/kibana-values.yaml`:
+Declarative Kubernetes logging manifests and Helm-oriented configuration values are maintained under `helm/logging/` (`elk-stack.yaml` and `kibana-values.yaml`):
 
 - **Target Backend**: `http://127.0.0.1:9200` (co-located in `elk` pod for zero-latency localhost IPC).
 - **Node.js Memory Safety**: Enforced via `NODE_OPTIONS="--max-old-space-size=256"`.
@@ -110,7 +111,7 @@ Declarative manifests are stored in `helm/logging/elk-stack.yaml` and `helm/logg
 
 ## 8. Kubernetes Namespaces & Resources
 
-All logging components are deployed into the `logging` namespace:
+All logging components are deployed into the `logging` namespace using declarative manifests under `helm/logging/` (the primary Helm chart remains `helm/nexvion-web` for the core application):
 
 | Resource Type | Resource Name | Namespace | Specs / Purpose |
 | :--- | :--- | :--- | :--- |
@@ -141,16 +142,20 @@ To fit the logging stack alongside `nexvion-web`, `ingress-nginx`, `metrics-serv
 
 ## 10. Security Considerations
 
-- **No Public Exposure**: Neither Elasticsearch (9200) nor Kibana (5601) is exposed via Ingress, ALB, or public NodePorts. They remain strictly internal ClusterIP services.
-- **Git Hygiene**: No plaintext passwords, tokens, API keys, or certificates are committed to the repository.
-- **Controlled Environment**: Authentication is disabled for this staging demonstration; production upgrades must enable X-Pack security or secret injection.
+- **Staging Authentication Scope**: Elasticsearch and Kibana authentication (`xpack.security.enabled=false`) is intentionally disabled for this staging/demonstration implementation.
+- **Internal ClusterIP Isolation**: Neither Elasticsearch (9200) nor Kibana (5601) is exposed via NodePort, Ingress, ALB, or NLB. They remain strictly internal `ClusterIP` services accessible only within the cluster.
+- **Production Requirements**: A production deployment must enable Elasticsearch/Kibana security (`xpack.security.enabled=true`) and use Kubernetes Secrets or an external secret operator (ESO) for credential management.
+- **Git Hygiene**: No plaintext passwords, API keys, tokens, or private certificates are committed to the repository.
 
 ---
 
-## 11. Cost / Staging Considerations
+## 11. Cost & AWS Capacity Considerations
 
-- **AWS Cost**: \$0.00 additional cost. Uses existing EKS `t3.small` capacity.
-- **No EBS / OpenSearch**: Storage uses ephemeral container layers. Logs do not persist across Elasticsearch pod deletions, which is documented and acceptable for this staging environment.
+- **No AWS Managed Services**: No separate AWS managed logging service (such as AWS OpenSearch) was provisioned for Phase 4.8.
+- **No Dedicated Infrastructure**: No additional AWS Load Balancer, EBS volume, or extra EKS worker node was provisioned specifically for Phase 4.8.
+- **Existing Worker Capacity**: The ELK stack operates within the existing EKS worker node capacity (`t3.small`).
+- **Standard AWS Charges**: Existing AWS charges for the EKS control plane and worker node instance still apply; Phase 4.8 is not "free", but avoids net-new AWS service costs.
+- **Storage Trade-off**: Log storage utilizes ephemeral container layers. Logs do not persist if the `elk` pod is recreated, which is acceptable for staging demonstration.
 
 ---
 
