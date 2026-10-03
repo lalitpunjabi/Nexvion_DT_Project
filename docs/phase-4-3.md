@@ -138,16 +138,20 @@ if (params.REGISTRY_TYPE == 'AWS_ECR') {
 |---|---|---|---|
 | **Terraform Format** | `terraform fmt -check -recursive` | **PASS** | 0 formatting errors |
 | **Terraform Validate** | `terraform validate` | **PASS** | Valid configuration |
-| **Terraform Plan** | `terraform plan -out=phase-4-3-ecr.tfplan` | **PASS** | `Plan: 8 to import, 2 to add, 7 to change, 0 to destroy` |
+| **Terraform Plan** | `terraform plan -out=phase-4-3-ecr.tfplan` | **PASS** | `Plan: 2 to add, 0 to change, 0 to destroy` |
 | **Infra Safety Check** | Infrastructure Preservation | **PASS** | 0 destroyed / replaced (EC2 `i-057f6d6d0bbb33b37` & EIP `52.66.25.69` untouched) |
-| **Trivy Image Scan** | `aquasec/trivy:0.60.0 image nexvion-web:0d575d0` | **PASS** | **0 vulnerabilities found** (Clean Alpine 3.24.2 base) |
-| **AWS ECR Apply** | `terraform apply phase-4-3-ecr.tfplan` | **ATTENTION REQUIRED** | AWS IAM user `arn:aws:iam::677012863109:user/Nexvion` requires `AmazonEC2ContainerRegistryFullAccess` attached in AWS Console |
+| **AWS ECR Apply** | `terraform apply "phase-4-3-ecr.tfplan"` | **PASS** | ECR repository `nexvion-web` and lifecycle policy successfully created |
+| **ECR Repository Check** | `aws ecr describe-repositories --repository-names nexvion-web` | **PASS** | Repository active, `IMMUTABLE` tags, `scanOnPush: true`, `AES256` encryption |
+| **Lifecycle Policy Check** | `aws ecr get-lifecycle-policy --repository-name nexvion-web` | **PASS** | Rule 1 (untagged >7d) & Rule 2 (retain max 30 tagged) verified active |
+| **Trivy Pre-Push Scan** | `aquasec/trivy:0.60.0 image nexvion-web:0d575d0` | **PASS** | **0 vulnerabilities found** (Clean Alpine 3.24.2 base) |
+| **AWS ECR Auth & Push** | `aws ecr get-login-password` + `docker push` | **PASS** | Image `677012863109.dkr.ecr.ap-south-1.amazonaws.com/nexvion-web:0d575d0` pushed |
+| **AWS Native ECR Scan** | `aws ecr describe-image-scan-findings` | **PASS** | Native ECR scan status `COMPLETE` with **0 vulnerability findings** |
 
 ---
 
 ## 6. Next Steps (Phase 4.4 Preparation)
 
-1. Attach `AmazonEC2ContainerRegistryFullAccess` policy to IAM user `Nexvion` in AWS IAM Console.
-2. Execute `terraform apply phase-4-3-ecr.tfplan` to complete ECR provisioning on AWS.
-3. Push image `677012863109.dkr.ecr.ap-south-1.amazonaws.com/nexvion-web:0d575d0` to AWS ECR.
-4. Prepare Phase 4.4 — Amazon EKS Cluster & Node Group Provisioning with Terraform.
+1. Retain the immutable ECR image artifact `677012863109.dkr.ecr.ap-south-1.amazonaws.com/nexvion-web:0d575d0` for deployment.
+2. Prepare Phase 4.4 — Amazon EKS Cluster & Node Group Provisioning with Terraform.
+3. Update Helm values (`values-prod.yaml`) to reference the real ECR image repository URI.
+
