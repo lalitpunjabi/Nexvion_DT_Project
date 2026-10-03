@@ -16,7 +16,7 @@
 │      IGW, Route Table, Security Group, EC2, Elastic IP, and EIP Association             │
 │    - Ansible Configuration (`ansible/`): System hardening, Docker Engine, Jenkins      │
 ├────────────────────────────────────────────────────────────────────────────────────────┤
-│ 4. KUBERNETES, HELM, ECR, EKS & WORKLOAD DEPLOYMENT (Phase 4.1 - 4.6 Implemented)      │
+│ 4. KUBERNETES, HELM, ECR, EKS & WORKLOAD DEPLOYMENT (Phase 4.1 - 4.7 Implemented)      │
 │    - Phase 4.1 Raw Manifests (`kubernetes/`): Namespace, ConfigMap, Secret,            │
 │      Deployment, Service, Ingress, HPA (Validated on Minikube)                          │
 │    - Phase 4.2 Helm Packaging (`helm/nexvion-web/`): Templated Helm 3 Chart with      │
@@ -29,6 +29,8 @@
 │      EKS pulling ECR image `0d575d0` (2/2 Ready pods, ClusterIP Service, health 200)   │
 │    - Phase 4.6 Metrics, HPA & Ingress (`ingress-nginx`): Metrics Server running,       │
 │      active CPU HPA metric calculation, and cost-conscious NodePort ingress routing     │
+│    - Phase 4.7 Prometheus & Grafana Observability (`helm/monitoring/`): Prometheus     │
+│      metrics scraper and Grafana platform overview dashboards verified live             │
 └────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -115,6 +117,15 @@
 - **Cost-Conscious Ingress Controller:** Installed `ingress-nginx` controller (v1.15.1) configured with `type: NodePort` (HTTP Port `31449`, HTTPS Port `31941`), avoiding creation of a separate AWS Load Balancer and associated hourly/data-processing charges.
 - **Ingress Route & NodePort Validation:** `ingress.networking.k8s.io/nexvion-web-ingress` dynamically assigned address `10.100.51.190`. Validated 200 OK responses for `/healthz`, `/`, `products.html`, and `payment.html` internally via ClusterIP and against the EKS worker node's private VPC IP (`172.31.59.164:31449`). Public Internet exposure and DNS resolution were not validated; AWS ALB/NLB was intentionally omitted.
 - **Detailed Specification:** See [`docs/phase-4-6-metrics-hpa-external-access.md`](docs/phase-4-6-metrics-hpa-external-access.md).
+
+---
+
+## Phase 4.7 Overview: Prometheus & Grafana Observability Foundation
+- **Prometheus Deployed:** `prometheus-community/prometheus` (v27.5.0) deployed to namespace `monitoring` with resource-conscious staging parameters (2d retention, `emptyDir` storage, 128Mi RAM request).
+- **Grafana Deployed:** `grafana/grafana` (v10.5.15) deployed to namespace `monitoring` with declarative Prometheus datasource and pre-loaded `Nexvion EKS Platform Observability` dashboard.
+- **PromQL Metrics Scraped & Validated:** Verified live collection for node CPU/RAM usage, `nexvion-web` pod CPU/RAM, deployment replicas (`2` available), HPA replicas (`2` current), and node readiness (`1` node ready).
+- **Workload & Ingress Preserved:** `deployment.apps/nexvion-web` (2/2 Ready), HPA (`cpu: 1%/70%`), and `ingress-nginx` NodePort routing remain 100% active and healthy.
+- **Detailed Specification:** See [`docs/phase-4-7-prometheus-grafana.md`](docs/phase-4-7-prometheus-grafana.md).
 
 ---
 

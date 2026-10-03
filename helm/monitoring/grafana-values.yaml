@@ -1,0 +1,166 @@
+# Grafana Staging Configuration for Nexvion EKS (Phase 4.7)
+# Resource-conscious configuration with declarative Prometheus datasource and pre-loaded Nexvion dashboard
+
+adminUser: admin
+# Default staging password for testing (No real production credentials)
+adminPassword: nexvion-staging-pass
+
+hostNetwork: true
+
+persistence:
+  enabled: false # Use emptyDir for cost-conscious staging
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 200m
+    memory: 128Mi
+
+service:
+  type: ClusterIP
+  port: 80
+
+datasources:
+  datasources.yaml:
+    apiVersion: 1
+    datasources:
+      - name: Prometheus
+        type: prometheus
+        url: http://prometheus-server.monitoring.svc.cluster.local:80
+        access: proxy
+        isDefault: true
+        jsonData:
+          timeInterval: 15s
+
+dashboardProviders:
+  dashboardproviders.yaml:
+    apiVersion: 1
+    providers:
+      - name: 'nexvion-dashboards'
+        orgId: 1
+        folder: 'Nexvion Platform'
+        type: file
+        disableDeletion: false
+        editable: true
+        options:
+          path: /var/lib/grafana/dashboards/nexvion-dashboards
+
+dashboards:
+  nexvion-dashboards:
+    nexvion-overview:
+      json: |
+        {
+          "annotations": { "list": [] },
+          "editable": true,
+          "fiscalYearStartMonth": 0,
+          "graphTooltip": 0,
+          "id": null,
+          "links": [],
+          "liveNow": false,
+          "panels": [
+            {
+              "title": "Kubernetes Node Readiness",
+              "type": "stat",
+              "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+              "targets": [
+                {
+                  "expr": "sum(kube_node_status_condition{condition=\"Ready\",status=\"true\"})",
+                  "legendFormat": "Ready Nodes"
+                }
+              ]
+            },
+            {
+              "title": "Nexvion Deployment Replicas (Desired vs Available)",
+              "type": "stat",
+              "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
+              "targets": [
+                {
+                  "expr": "kube_deployment_status_replicas_available{namespace=\"nexvion\",deployment=\"nexvion-web\"}",
+                  "legendFormat": "Available Replicas"
+                },
+                {
+                  "expr": "kube_deployment_spec_replicas{namespace=\"nexvion\",deployment=\"nexvion-web\"}",
+                  "legendFormat": "Desired Replicas"
+                }
+              ]
+            },
+            {
+              "title": "HPA Replicas (Current vs Desired)",
+              "type": "stat",
+              "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
+              "targets": [
+                {
+                  "expr": "kube_horizontalpodautoscaler_status_current_replicas{namespace=\"nexvion\",horizontalpodautoscaler=\"nexvion-web-hpa\"}",
+                  "legendFormat": "Current HPA Replicas"
+                },
+                {
+                  "expr": "kube_horizontalpodautoscaler_status_desired_replicas{namespace=\"nexvion\",horizontalpodautoscaler=\"nexvion-web-hpa\"}",
+                  "legendFormat": "Desired HPA Replicas"
+                }
+              ]
+            },
+            {
+              "title": "Nexvion Pod Restarts Total",
+              "type": "stat",
+              "gridPos": { "h": 4, "w": 6, "x": 18, "y": 0 },
+              "targets": [
+                {
+                  "expr": "sum(kube_pod_container_status_restarts_total{namespace=\"nexvion\"})",
+                  "legendFormat": "Restarts"
+                }
+              ]
+            },
+            {
+              "title": "EKS Worker Node CPU Utilization (%)",
+              "type": "timeseries",
+              "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
+              "targets": [
+                {
+                  "expr": "100 - (avg by (instance) (rate(node_cpu_seconds_total{mode=\"idle\"}[2m])) * 100)",
+                  "legendFormat": "Node CPU Usage %"
+                }
+              ]
+            },
+            {
+              "title": "EKS Worker Node Memory Utilization (%)",
+              "type": "timeseries",
+              "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+              "targets": [
+                {
+                  "expr": "(1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100",
+                  "legendFormat": "Node Memory Usage %"
+                }
+              ]
+            },
+            {
+              "title": "Nexvion Pods CPU Usage (Cores)",
+              "type": "timeseries",
+              "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
+              "targets": [
+                {
+                  "expr": "sum(rate(container_cpu_usage_seconds_total{namespace=\"nexvion\",pod=~\"nexvion-web-.*\",container=\"nexvion-web\"}[2m])) by (pod)",
+                  "legendFormat": "{{pod}}"
+                }
+              ]
+            },
+            {
+              "title": "Nexvion Pods Memory Usage (Working Set)",
+              "type": "timeseries",
+              "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
+              "targets": [
+                {
+                  "expr": "sum(container_memory_working_set_bytes{namespace=\"nexvion\",pod=~\"nexvion-web-.*\",container=\"nexvion-web\"}) by (pod)",
+                  "legendFormat": "{{pod}}"
+                }
+              ]
+            }
+          ],
+          "schemaVersion": 38,
+          "style": "dark",
+          "tags": ["nexvion", "kubernetes", "observability"],
+          "time": { "from": "now-1h", "to": "now" },
+          "title": "Nexvion EKS Platform Observability",
+          "uid": "nexvion-platform-overview"
+        }

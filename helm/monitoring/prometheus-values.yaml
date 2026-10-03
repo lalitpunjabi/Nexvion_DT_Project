@@ -1,0 +1,45 @@
+# Prometheus Staging Configuration for Nexvion EKS (Phase 4.7)
+# Resource-conscious configuration targeting t3.small worker nodes
+
+server:
+  enabled: true
+  retention: "2d"
+  persistentVolume:
+    enabled: false # Use emptyDir to avoid EBS storage cost in staging
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 300m
+      memory: 384Mi
+  global:
+    scrape_interval: 15s
+    scrape_timeout: 10s
+    evaluation_interval: 15s
+
+alertmanager:
+  enabled: false # Disabled to save RAM/CPU resources in staging
+
+prometheus-pushgateway:
+  enabled: false # Disabled to save RAM/CPU resources in staging
+
+prometheus-node-exporter:
+  enabled: true
+  resources:
+    requests:
+      cpu: 10m
+      memory: 16Mi
+    limits:
+      cpu: 50m
+      memory: 32Mi
+
+kube-state-metrics:
+  enabled: true
+  resources:
+    requests:
+      cpu: 10m
+      memory: 32Mi
+    limits:
+      cpu: 50m
+      memory: 64Mi
