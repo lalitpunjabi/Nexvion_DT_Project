@@ -27,7 +27,7 @@ pipeline {
     parameters {
         choice(
             name: 'REGISTRY_TYPE',
-            choices: ['AWS_ECR', 'LOCAL_ONLY', 'DOCKER_HUB'],
+            choices: ['AWS_ECR', 'LOCAL_ONLY'],
             description: 'Target Container Registry type.'
         )
 

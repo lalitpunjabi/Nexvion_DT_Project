@@ -5,8 +5,6 @@
 adminUser: admin
 # adminPassword is intentionally omitted from Git to enforce secret management best practices
 
-hostNetwork: true
-
 persistence:
   enabled: false # Use emptyDir for cost-conscious staging
 

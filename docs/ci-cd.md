@@ -47,7 +47,7 @@ This pipeline architecture establishes three distinct operational scopes:
 - **Default Parameters:**
   - `REGISTRY_TYPE`: `'LOCAL_ONLY'` (Prevents fresh default Jenkins jobs from attempting to push to placeholder ECR URIs).
   - `PUSH_TO_REGISTRY`: `false` (Must be explicitly enabled when real ECR URI and credentials are present).
-- **Supported Targets:** `LOCAL_ONLY` (Default), `AWS_ECR` (Production target), `DOCKER_HUB`.
+- **Supported Targets:** `LOCAL_ONLY` (Default), `AWS_ECR` (Target container registry).
 
 ---
 
@@ -94,7 +94,6 @@ This pipeline architecture establishes three distinct operational scopes:
 | Credential ID | Credential Type | Usage & Description |
 | :--- | :--- | :--- |
 | `ecr-credentials` | Username with Password | Temporary Phase 2 fallback AWS credentials (Access Key / Secret Key). Replaced by IAM Roles in Phase 3/4. |
-| `docker-registry-credentials` | Username with Password | Docker Hub Username & Access Token (Optional). |
 | `github-webhook-secret` | Secret text | Webhook payload signature secret. |
 
 ---

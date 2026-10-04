@@ -90,11 +90,11 @@ An AWS CLI discovery of existing subnets in VPC `vpc-09df3f5fdabdcf81f` revealed
 |---|---|---|---|---|
 | **EKS Control Plane** | `aws_eks_cluster.nexvion` (`nexvion-eks`) | **MUST INCUR CHARGES** | ~$73.00 / month ($0.10/hr) | **Not covered by AWS Free Tier.** Standard Support (v1.36) avoids $0.60/hr Extended Support penalty. |
 | **EC2 Worker Nodes** | `aws_eks_node_group.nexvion` (1x `t3.small`) | **POTENTIALLY BILLABLE** | ~$15.00 / month ($0.0208/hr x 1) | *Potentially billable; verify current account-specific Free Tier eligibility*. `t3.small` (2GB RAM) supports CNI/CoreDNS. Initial deployment set to 1 node (`desired_size = 1`). |
-| **Public IPv4 Addresses** | Node public IPs & EC2 EIP | **POTENTIALLY BILLABLE** | ~$3.60 / month per IP ($0.005/hr) | Standard AWS public IPv4 charge (effective Feb 2024). *Potentially billable; verify account eligibility*. |
-| **EBS Storage Volumes** | Worker node root EBS volumes | **POTENTIALLY BILLABLE** | $0.00 – $1.60 / month | 20 GB root EBS volume per node. *Potentially billable if cumulative account storage exceeds 30 GB/mo gp2/gp3 Free Tier limit*. |
-| **Amazon ECR Storage** | `aws_ecr_repository.nexvion` (`nexvion-web`) | **POTENTIALLY BILLABLE** | $0.00 – $0.50 / month | Includes 500 MB storage/month in Free Tier; excess is $0.10/GB-mo. |
-| **NAT Gateway** | N/A | **AVOIDED ($0.00)** | **$0.00 (Omitted)** | **Intentionally omitted** to save ~$32.00/mo per NAT GW. Worker nodes run in public subnets with IGW routes. |
-| **Application Load Balancer** | N/A | **AVOIDED ($0.00)** | **$0.00 (Omitted)** | **Intentionally omitted** for Phase 4.4 to prevent $18.00/mo ALB base charge. |
+| **Public IPv4 Addresses** | Node public IPs & EC2 EIP | **POTENTIALLY BILLABLE** | ~$3.60 / month per IP ($0.005 / hr) | Standard AWS public IPv4 charge (effective Feb 2024). *Potentially billable; verify account eligibility*. |
+| **EBS Storage Volumes** | Worker node root EBS volumes | **POTENTIALLY BILLABLE** | $0 – $1.60 / month | 20 GB root EBS volume per node. *Potentially billable if cumulative account storage exceeds 30 GB/mo gp2/gp3 Free Tier limit*. |
+| **Amazon ECR Storage** | `aws_ecr_repository.nexvion` (`nexvion-web`) | **POTENTIALLY BILLABLE** | $0 – $0.50 / month | Includes 500 MB storage/month in Free Tier; excess is $0.10/GB-mo. |
+| **NAT Gateway** | N/A | **AVOIDED** | **Omitted ($0 / mo)** | **Intentionally omitted** in this staging architecture, avoiding NAT Gateway hourly ($0.045/hr) and data-processing charges (~$32/mo). Worker nodes run in public subnets with IGW routes. |
+| **Application Load Balancer** | N/A | **AVOIDED** | **Omitted ($0 / mo)** | **Intentionally omitted** in this staging architecture to avoid AWS Load Balancer base hourly (~$18/mo) and LCU processing charges. |
 
 ---
 

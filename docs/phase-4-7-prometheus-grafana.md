@@ -57,13 +57,13 @@ Before executing Phase 4.7, the Phase 4.6 baseline was audited and preserved com
 
 ## 2. Helm Installation & Namespace Architecture
 
-Observability components were deployed in a dedicated `monitoring` namespace using declarative Helm values files stored in the repository at [`helm/monitoring/`](file:///c:/Users/Lalit%20Punjabi/Nexvion_DT_Project/helm/monitoring):
+Observability components were deployed in a dedicated `monitoring` namespace using declarative Helm values files stored in the repository at [`helm/monitoring/`](../helm/monitoring/):
 
 - **Target Namespace:** `monitoring` (`kubectl create namespace monitoring`)
 - **Prometheus Helm Chart:** `prometheus-community/prometheus` (v27.5.0)
-  - Values File: [`helm/monitoring/prometheus-values.yaml`](file:///c:/Users/Lalit%20Punjabi/Nexvion_DT_Project/helm/monitoring/prometheus-values.yaml)
+  - Values File: [`helm/monitoring/prometheus-values.yaml`](../helm/monitoring/prometheus-values.yaml)
 - **Grafana Helm Chart:** `grafana/grafana` (v10.5.15, Grafana v12.3.1)
-  - Values File: [`helm/monitoring/grafana-values.yaml`](file:///c:/Users/Lalit%20Punjabi/Nexvion_DT_Project/helm/monitoring/grafana-values.yaml)
+  - Values File: [`helm/monitoring/grafana-values.yaml`](../helm/monitoring/grafana-values.yaml)
 
 ### Kubernetes Resources Created in Namespace `monitoring`:
 
@@ -98,7 +98,7 @@ Prometheus automatically discovers and scrapes cluster metrics every `15s`:
 
 ## 4. Grafana Datasource, Dashboard & Secret Provisioning
 
-Grafana is provisioned declaratively via [`helm/monitoring/grafana-values.yaml`](file:///c:/Users/Lalit%20Punjabi/Nexvion_DT_Project/helm/monitoring/grafana-values.yaml):
+Grafana is provisioned declaratively via [`helm/monitoring/grafana-values.yaml`](../helm/monitoring/grafana-values.yaml):
 
 ### A. Secret Management & Credential Handling
 - **No Plaintext Passwords in Git:** Plaintext Grafana admin credentials (`adminPassword`) are **intentionally omitted** from repository code and configuration files.

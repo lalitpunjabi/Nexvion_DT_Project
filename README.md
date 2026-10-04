@@ -100,7 +100,7 @@
 ## Phase 4.4 Overview: Amazon EKS Cluster & Managed Node Group Infrastructure (Cost-Constrained Staging)
 - **EKS Cluster Resource:** `aws_eks_cluster.nexvion` (`nexvion-eks`, Kubernetes `1.36` Standard Support) in `ap-south-1`.
 - **Managed Node Group:** `aws_eks_node_group.nexvion` (`nexvion-node-group`, 1x `t3.small` instance initial deployment, scaling min:1, max:2).
-- **Cost-Constrained Multi-AZ Networking:** Extends existing VPC (`vpc-09df3f5fdabdcf81f`) with a non-overlapping second public subnet (`aws_subnet.eks_public_a`, `172.31.48.0/20` in `ap-south-1a`), avoiding expensive NAT Gateway charges ($0.00 extra NAT GW cost).
+- **Cost-Constrained Multi-AZ Networking:** Extends existing VPC (`vpc-09df3f5fdabdcf81f`) with a non-overlapping second public subnet (`aws_subnet.eks_public_a`, `172.31.48.0/20` in `ap-south-1a`), avoiding expensive NAT Gateway hourly and data-processing charges.
 - **Account-Aware Cost Disclosures:** EKS Control Plane ($0.10/hr, ~$73/mo) is **not covered by Free Tier**; EC2 worker nodes (`t3.small`) are potentially billable. Cluster is provisioned on-demand.
 - **IAM Security:** Dedicated roles (`nexvion-eks-cluster-role`, `nexvion-eks-node-group-role`) with `AmazonEKSClusterPolicy`, `AmazonEKSWorkerNodePolicy`, `AmazonEKS_CNI_Policy`, and `AmazonEC2ContainerRegistryReadOnly`.
 - **Zero Destruction Guarantee:** Verified via `terraform plan` (13 to add, 0 to change, 0 to destroy). Existing EC2, EIP, VPC, subnet, IGW, SG, and ECR preserved untouched.
@@ -235,6 +235,5 @@ Therefore, external registry credentials are NOT required for the default stagin
 
 | Credential ID | Type | Status | Usage |
 | :--- | :--- | :--- | :--- |
-| `docker-registry-credentials` | Username with Password | Optional | Docker Hub push when explicitly enabled |
 | `github-webhook-secret` | Secret text | Optional | GitHub webhook authentication |
 | `ecr-credentials` | Username with Password | Future/Optional | Only required if AWS ECR registry push is explicitly enabled |

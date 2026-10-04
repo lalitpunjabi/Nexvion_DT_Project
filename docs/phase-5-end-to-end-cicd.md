@@ -59,7 +59,7 @@ Prometheus Metrics Scraper     Kibana Centralized Search
 
 ## 3. Pipeline Stages & Execution Flow
 
-The delivery flow is declared in [`Jenkinsfile`](file:///c:/Users/Lalit%20Punjabi/Nexvion_DT_Project/Jenkinsfile):
+The delivery flow is declared in [`Jenkinsfile`](../Jenkinsfile):
 
 1. **Stage 1: Checkout & Metadata**: Fetches Git SCM and determines immutable 7-character Git commit SHA (`env.GIT_COMMIT_SHA`).
 2. **Stage 2: Validate & Dependency Scan**: Validates HTML/CSS/JS syntax, Docker Compose files, Helm chart linting, and runs dependency security checks.
@@ -175,7 +175,7 @@ A controlled deployment failure test was executed on the live EKS cluster (`nexv
 
 Phase 5 v2 is **Hardened & Validated** on the live AWS platform.
 
-- [x] Full Jenkins delivery pipeline declared in [`Jenkinsfile`](file:///c:/Users/Lalit%20Punjabi/Nexvion_DT_Project/Jenkinsfile).
+- [x] Full Jenkins delivery pipeline declared in [`Jenkinsfile`](../Jenkinsfile).
 - [x] Code validation and static web dependency checks integrated (`npm audit`).
 - [x] GitLeaks secret scan gate integrated (`v8.28.0`).
 - [x] Immutable Docker image building with Git SHA tag (`685f1c1`).
