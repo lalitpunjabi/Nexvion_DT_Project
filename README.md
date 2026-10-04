@@ -35,6 +35,12 @@
 │      Elasticsearch, and Kibana log search/visualization validated end-to-end             │
 │    - Phase 4.9 AI Incident Analysis (`tools/incident-analysis/`): Live telemetry       │
 │      collector (K8s APIs, ES logs, PromQL), 12-rule classifier, & report engine         │
+├────────────────────────────────────────────────────────────────────────────────────────┤
+│ 5. END-TO-END CI/CD PIPELINE INTEGRATION (Phase 5 Implemented & Validated)            │
+│    - Automated Jenkins Delivery Pipeline (`Jenkinsfile`): GitHub ➔ Checkout ➔          │
+│      Validation ➔ npm audit ➔ GitLeaks ➔ Docker Build (Git SHA) ➔ Trivy ➔ ECR Auth ➔  │
+│      ECR Push ➔ EKS Auth ➔ Helm Dry-Run ➔ Helm Upgrade ➔ Rolling Update (maxSurge: 0) ➔ │
+│      Rollout Status ➔ Endpoint Verification ➔ Diagnostics & Rollback Handling          │
 └────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -153,6 +159,20 @@
 - **Controlled Incident Validation:** Validated on live AWS EKS cluster (`nexvion-eks`) using test scenario `NEXVION-DEMO-001`, successfully retrieving live log markers and telemetry evidence.
 - **AWS Cost Alignment:** No dedicated AWS infrastructure was provisioned for Phase 4.9. The analyzer runs at script/client level using existing EKS resources. Existing EKS control-plane and worker-node charges still apply.
 - **Detailed Specification:** See [`docs/phase-4-9-ai-assisted-incident-analysis.md`](docs/phase-4-9-ai-assisted-incident-analysis.md).
+
+---
+
+## Phase 5 Overview: End-to-End CI/CD Integration
+- **Automated Delivery Pipeline:** [`Jenkinsfile`](Jenkinsfile) integrates all Phase 2–4 components into a unified 8-stage automated delivery flow connecting GitHub source control to Amazon EKS cluster deployments.
+- **Dependency & Code Validation:** Executes Node.js file validation (`node -c`) and `npm audit --audit-level=high` dependency scanner before container compilation.
+- **Secret & Container Scanning:** Preserves GitLeaks secret detection (`v8.28.0`) and Trivy container vulnerability scanning (`v0.60.0`) enforced on the exact Git SHA build artifact (`nexvion-web:${GIT_SHA}`).
+- **AWS ECR Push & Verification:** Authenticates via `aws ecr get-login-password`, tags image with immutable Git commit SHA (`685f1c1`), pushes to ECR repository `677012863109.dkr.ecr.ap-south-1.amazonaws.com/nexvion-web:${GIT_SHA}`, and verifies manifest digest existence prior to deployment.
+- **AWS EKS & Helm Deployment:** Configures `kubectl` context (`aws eks update-kubeconfig`), executes `helm lint` and `helm upgrade --install --dry-run` pre-flight validation, and deploys REVISION to namespace `nexvion` using `helm/nexvion-web/values-prod.yaml` (`environment: "staging"` preserved).
+- **Zero-Downtime Rolling Update & Pod Budget Safety:** Tuned deployment strategy to `maxSurge: 0` and `maxUnavailable: 1` to strictly adhere to single `t3.small` EKS worker node capacity (`maxPods=11`), terminating 1 old pod before creating a replacement pod.
+- **Rollout & Endpoint Health Verification:** Monitors deployment status via `kubectl rollout status` (300s timeout) and performs internal HTTP verification against pods/services for `/healthz`, `/`, `products.html`, and `payment.html` (all HTTP 200 OK).
+- **Automated Rollback & Diagnostics:** On deployment or rollout failure, pipeline captures `kubectl describe`, pod logs, and K8s events before executing `helm rollback` to restore the previous stable release revision.
+- **Backward Compatibility:** Preserves `LOCAL_ONLY` parameterization for local Docker Compose staging (`localhost:8081`) while introducing parameters (`REGISTRY_TYPE`, `DEPLOY_TARGET`, `PUSH_TO_REGISTRY`, `DEPLOY_EKS`).
+- **Detailed Specification:** See [`docs/phase-5-end-to-end-cicd.md`](docs/phase-5-end-to-end-cicd.md).
 
 ---
 

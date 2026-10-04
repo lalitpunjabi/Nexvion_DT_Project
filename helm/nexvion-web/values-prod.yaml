@@ -5,6 +5,10 @@ namespace: nexvion
 
 replicaCount: 2
 
+rollingUpdate:
+  maxSurge: 0
+  maxUnavailable: 1
+
 image:
   # Real AWS ECR repository URI created in Phase 4.3
   repository: "677012863109.dkr.ecr.ap-south-1.amazonaws.com/nexvion-web"

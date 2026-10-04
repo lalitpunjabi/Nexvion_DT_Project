@@ -4,6 +4,10 @@ namespace: nexvion
 
 replicaCount: 2
 
+rollingUpdate:
+  maxSurge: 0
+  maxUnavailable: 1
+
 image:
   repository: nexvion-web
   tag: v1.0.0
