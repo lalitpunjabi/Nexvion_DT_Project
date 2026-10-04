@@ -1,8 +1,10 @@
-# Private Keys & AWS Credentials
+# Private Keys, Secrets & Environment Files
 *.pem
 *.key
 id_rsa
 id_ed25519
+.env
+*.env
 
 # Terraform State & Local Files
 terraform/.terraform/

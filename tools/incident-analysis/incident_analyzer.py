@@ -19,6 +19,28 @@ from reporters.md_reporter import generate_md_report
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 logger = logging.getLogger("incident_analyzer")
 
+def load_env_file():
+    """Loads environment variables from local .env file if present and not already set."""
+    env_paths = [
+        os.path.join(os.getcwd(), ".env"),
+        os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), ".env")
+    ]
+    for env_path in env_paths:
+        if os.path.exists(env_path):
+            try:
+                with open(env_path, "r", encoding="utf-8") as f:
+                    for line in f:
+                        line = line.strip()
+                        if line and not line.startswith("#") and "=" in line:
+                            k, v = line.split("=", 1)
+                            k, v = k.strip(), v.strip().strip("'\"")
+                            if k and not os.getenv(k):
+                                os.environ[k] = v
+            except Exception:
+                pass
+
+load_env_file()
+
 def run_incident_analysis(incident_id, namespace="nexvion", query=None, output_dir="reports"):
     """
     Main incident analysis pipeline. Collects K8s, ES, and Prometheus evidence,

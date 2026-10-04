@@ -5,29 +5,32 @@ set -e
 
 INCIDENT_ID="NEXVION-DEMO-001"
 NAMESPACE="nexvion"
-POD_NAME="nexvion-demo-incident-pod"
+MARKER="NEXVION_AI_INCIDENT_DEMO_20261004"
 
 echo "======================================================================"
 echo " Phase 4.9 — Controlled Demonstration Incident Execution"
 echo "======================================================================"
 
-echo "[1/4] Triggering controlled demonstration incident log markers..."
-kubectl run ${POD_NAME} --image=alpine -n ${NAMESPACE} --restart=Never -- sh -c '
-echo "[CRITICAL] NEXVION_AI_INCIDENT_DEMO_20261004: Connection failure to database host db-replica-01.nexvion.internal:5432"
-echo "[ERROR] NEXVION_AI_INCIDENT_DEMO_20261004: HTTP 500 Internal Server Error in payment checkout handler"
-echo "[WARNING] NEXVION_AI_INCIDENT_DEMO_20261004: Memory usage threshold exceeded 85% limit on container"
-sleep 5
-'
+echo "[1/4] Injecting controlled demonstration incident log markers into nexvion workload stdout..."
+kubectl exec -n ${NAMESPACE} deploy/nexvion-web -c nexvion-web -- sh -c \
+  "echo '[ERROR] ${MARKER}: Connection failure to database host db-replica-01.nexvion.internal:5432 HTTP 500 Internal Server Error in payment checkout handler' > /proc/1/fd/1"
+
+kubectl exec -n ${NAMESPACE} deploy/nexvion-web -c nexvion-web -- sh -c \
+  "echo '[WARNING] ${MARKER}: High memory threshold advisory 82% allocation on container nexvion-web' > /proc/1/fd/1"
 
 echo "[2/4] Waiting 10s for Fluent Bit & Elasticsearch log ingestion..."
 sleep 10
 
-echo "[3/4] Running Incident Analysis Engine..."
-python tools/incident-analysis/incident_analyzer.py --incident-id "${INCIDENT_ID}" --namespace "${NAMESPACE}" --query "NEXVION_AI_INCIDENT_DEMO_20261004"
+echo "[3/4] Verifying Elasticsearch log marker ingestion..."
+kubectl exec -n logging deploy/elk -c elasticsearch -- \
+  curl -s "http://localhost:9200/nexvion-logs-*/_search?q=${MARKER}&pretty"
 
-echo "[4/4] Cleaning up demonstration pod..."
-kubectl delete pod ${POD_NAME} -n ${NAMESPACE} --ignore-not-found
+echo "[4/4] Running Incident Analysis Engine..."
+python tools/incident-analysis/incident_analyzer.py --incident-id "${INCIDENT_ID}" --namespace "${NAMESPACE}" --query "${MARKER}" --output-dir reports
 
 echo "======================================================================"
-echo " Demonstration Complete! Check reports/${INCIDENT_ID}.md"
+echo " Demonstration Complete! Structured reports generated:"
+echo " - reports/${INCIDENT_ID}.json"
+echo " - reports/${INCIDENT_ID}.md"
 echo "======================================================================"
+

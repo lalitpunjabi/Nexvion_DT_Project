@@ -131,6 +131,10 @@ def collect_k8s_state(namespace="nexvion", include_all_namespaces=True):
             message = item.get("message", "")
             component = item.get("involvedObject", {}).get("name", "")
             
+            # Omit stale events from deleted temporary demo pods
+            if "demo-incident-pod" in component:
+                continue
+
             if event_type == "Warning" or reason in ["OOMKilled", "BackOff", "FailedScheduling", "Unhealthy", "Killing"]:
                 state["events"].append({
                     "type": event_type,

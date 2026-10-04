@@ -151,7 +151,7 @@
 - **Dual-Mode Intelligence:** Supports external AI Provider models (`AI-Assisted Analysis` when `AI_API_KEY` is provided) with a 100% offline, deterministic `Rule-Based Analysis` fallback engine.
 - **Structured Report Generation:** Outputs machine-readable JSON (`reports/<INCIDENT_ID>.json`) and human-readable Markdown (`reports/<INCIDENT_ID>.md`) containing root cause, contributing factors, investigation steps, remediation actions, and verification plans.
 - **Controlled Incident Validation:** Validated on live AWS EKS cluster (`nexvion-eks`) using test scenario `NEXVION-DEMO-001`, successfully retrieving live log markers and telemetry evidence.
-- **Zero Additional AWS Cost:** Uses client-side execution on top of existing EKS worker capacity without creating extra pods on the capacity-constrained worker node (`maxPods=11`).
+- **AWS Cost Alignment:** No dedicated AWS infrastructure was provisioned for Phase 4.9. The analyzer runs at script/client level using existing EKS resources. Existing EKS control-plane and worker-node charges still apply.
 - **Detailed Specification:** See [`docs/phase-4-9-ai-assisted-incident-analysis.md`](docs/phase-4-9-ai-assisted-incident-analysis.md).
 
 ---

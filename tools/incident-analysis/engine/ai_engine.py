@@ -13,7 +13,7 @@ def analyze_incident_with_ai_or_fallback(incident_id, k8s_state, es_logs, prom_m
     """
     ai_provider = os.getenv("AI_PROVIDER", "google").lower()
     ai_api_key = os.getenv("AI_API_KEY")
-    ai_model = os.getenv("AI_MODEL", "gemini-2.5-flash")
+    ai_model = os.getenv("AI_MODEL", "gemini-flash-lite-latest")
 
     if ai_api_key:
         try:
@@ -182,7 +182,8 @@ Prometheus Metrics Summary:
 """
 
     if provider in ["google", "gemini"]:
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
+        model_name = model.replace("models/", "")
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}"
         payload = {
             "contents": [{"parts": [{"text": prompt}]}],
             "generationConfig": {"responseMimeType": "application/json"}

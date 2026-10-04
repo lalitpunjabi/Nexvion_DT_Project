@@ -41,7 +41,11 @@ def collect_es_logs(query_term=None, namespace="nexvion", limit=30, index_patter
         resp_json = json.loads(res.stdout)
         
         hits_data = resp_json.get("hits", {})
-        logs_data["total_hits"] = hits_data.get("total", {}).get("value", 0)
+        total_raw = hits_data.get("total", 0)
+        if isinstance(total_raw, dict):
+            logs_data["total_hits"] = total_raw.get("value", 0)
+        else:
+            logs_data["total_hits"] = int(total_raw)
         
         for hit in hits_data.get("hits", []):
             src = hit.get("_source", {})
@@ -50,9 +54,9 @@ def collect_es_logs(query_term=None, namespace="nexvion", limit=30, index_patter
             k8s_meta = src.get("kubernetes", {})
             
             msg_upper = str(msg).upper()
-            if "ERROR" in msg_upper or "CRITICAL" in msg_upper or "EXCEPTION" in msg_upper or stream == "stderr":
+            if "ERROR" in msg_upper or "CRITICAL" in msg_upper or "EXCEPTION" in msg_upper or "HTTP 5" in msg_upper or stream == "stderr":
                 logs_data["error_count"] += 1
-            elif "WARN" in msg_upper:
+            elif "WARN" in msg_upper or "HTTP 4" in msg_upper:
                 logs_data["warning_count"] += 1
             
             logs_data["matched_logs"].append({
