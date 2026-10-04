@@ -57,7 +57,7 @@ Before executing Phase 4.7, the Phase 4.6 baseline was audited and preserved com
 
 ## 2. Helm Installation & Namespace Architecture
 
-Observability components were deployed in a dedicated `monitoring` namespace using declarative Helm values files stored in the repository at [`helm/monitoring/`](../helm/monitoring/):
+Observability components were deployed in a dedicated `monitoring` namespace using declarative Helm values files stored in the repository at [`helm/monitoring/`](file:///c:/Users/Lalit%20Punjabi/Nexvion_DT_Project/helm/monitoring):
 
 - **Target Namespace:** `monitoring` (`kubectl create namespace monitoring`)
 - **Prometheus Helm Chart:** `prometheus-community/prometheus` (v27.5.0)
