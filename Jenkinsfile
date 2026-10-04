@@ -4,7 +4,7 @@
 // Delivery Lifecycle Flow (Phase 5):
 //   GitHub ➔ Jenkins ➔ Checkout ➔ Validate ➔ Dependency Scan ➔ Secret Scan (GitLeaks)
 //   ➔ Docker Build ➔ Image Scan (Trivy) ➔ ECR Auth & Push (Git SHA) ➔ EKS Auth
-//   ➔ Helm Lint & Render ➔ Helm Upgrade/Install ➔ Rolling Deployment (maxSurge:1, maxUnavailable:0)
+//   ➔ Helm Lint & Render ➔ Helm Upgrade/Install ➔ Capacity-Safe Rolling Deployment (maxSurge: 0, maxUnavailable: 1)
 //   ➔ kubectl rollout status ➔ Workload Health Verification (/healthz, /, products, payment)
 //   ➔ Observability Verification (Prometheus/Grafana/ELK) ➔ Failure Diagnostics & Automated Rollback
 // ==============================================================================
@@ -471,7 +471,24 @@ pipeline {
                     )
                     echo '[PASS] Pre-deployment Helm rendering and lint checks passed.'
 
-                    // 3. Execute Live Helm Upgrade / Install
+                    // 3. Capture Current Deployed Helm Revision Prior to Upgrade
+                    def previousRevision = sh(
+                        script: """
+                            helm history ${env.HELM_RELEASE} -n ${env.K8S_NAMESPACE} -o json 2>/dev/null | python -c "
+import sys, json
+try:
+    history = json.load(sys.stdin)
+    deployed = [str(x['revision']) for x in history if x.get('status') in ['deployed', 'superseded']]
+    print(deployed[-1] if deployed else '')
+except Exception:
+    print('')
+" || echo ""
+                        """,
+                        returnStdout: true
+                    ).trim()
+                    echo "Captured Current Deployed Helm Revision prior to upgrade: '${previousRevision}'"
+
+                    // 4. Execute Live Helm Upgrade / Install
                     echo "Executing live Helm upgrade/install to EKS..."
                     try {
                         sh(
@@ -486,13 +503,13 @@ pipeline {
                             label: 'Helm Upgrade Execution'
                         )
 
-                        // 4. Rolling Update Verification
-                        echo "Monitoring EKS Rolling Update deployment status (timeout 300s)..."
+                        // 5. Rolling Update Verification
+                        echo "Monitoring EKS Capacity-Safe Rolling Update deployment status (timeout 300s)..."
                         sh(
                             script: "kubectl rollout status deployment/${env.APP_NAME} -n ${env.K8S_NAMESPACE} --timeout=300s",
                             label: 'Kubectl Rollout Status Verification'
                         )
-                        echo '[PASS] EKS Rolling update completed successfully.'
+                        echo '[PASS] EKS Capacity-Safe Rolling update completed successfully.'
 
                     } catch (Exception deployError) {
                         echo "[ERROR] EKS Deployment or Rolling Update failed: ${deployError.message}"
@@ -517,48 +534,36 @@ pipeline {
                             label: 'Trigger Incident Analyzer Diagnostics'
                         )
 
-                        // Check Helm History & Perform Safe Automated Rollback
-                        def helmHistory = sh(
-                            script: "helm history ${env.HELM_RELEASE} -n ${env.K8S_NAMESPACE} -o json || echo '[]'",
-                            returnStdout: true
-                        ).trim()
-
-                        echo "Helm History: ${helmHistory}"
-
-                        if (helmHistory.contains('"revision":2') || helmHistory.contains('"revision": 2')) {
-                            echo "Previous successful Helm revision detected. Executing automated Helm rollback..."
+                        // Dynamic Automated Helm Rollback
+                        if (previousRevision && previousRevision != '' && previousRevision != '0') {
+                            echo "Previous deployed Helm revision (${previousRevision}) identified. Executing dynamic automated Helm rollback..."
                             sh(
-                                script: "helm rollback ${env.HELM_RELEASE} -n ${env.K8S_NAMESPACE}",
-                                label: 'Execute Helm Rollback'
+                                script: "helm rollback ${env.HELM_RELEASE} ${previousRevision} -n ${env.K8S_NAMESPACE}",
+                                label: 'Execute Dynamic Helm Rollback'
                             )
                             sh(
                                 script: "kubectl rollout status deployment/${env.APP_NAME} -n ${env.K8S_NAMESPACE} --timeout=180s",
                                 label: 'Rollback Status Verification'
                             )
-                            echo "[NOTICE] Automated Helm rollback completed to previous stable release."
+                            echo "[NOTICE] Dynamic automated Helm rollback to revision ${previousRevision} completed successfully."
                         } else {
-                            echo "[NOTICE] Initial release revision 1. Automated rollback skipped."
+                            echo "[NOTICE] Initial release detected (no previous deployed revision). Automated rollback skipped."
                         }
 
                         error("EKS DEPLOYMENT FAILURE: ${deployError.message}")
                     }
 
-                    // 5. Post-Deployment Endpoint Health Verification
+                    // 6. Post-Deployment Endpoint Health Verification (Multi-Level)
                     echo "Verifying EKS Workload Health Endpoints..."
-                    def ingressIp = sh(
-                        script: "kubectl get ingress/${env.APP_NAME}-ingress -n ${env.K8S_NAMESPACE} -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || echo ''",
-                        returnStdout: true
-                    ).trim()
-
                     def serviceIp = sh(
                         script: "kubectl get svc/${env.APP_NAME}-service -n ${env.K8S_NAMESPACE} -o jsonpath='{.spec.clusterIP}' 2>/dev/null || echo ''",
                         returnStdout: true
                     ).trim()
 
                     echo "EKS Service ClusterIP: ${serviceIp}"
-                    echo "EKS Ingress Address:   ${ingressIp}"
 
-                    // Internal Endpoint Probe against ClusterIP service inside cluster proxy or node host
+                    // LEVEL 1: Pod-local Application Health Verification
+                    echo "Level 1 Verification: Performing Pod-Local Application Probe..."
                     sh(
                         script: """
                             kubectl exec -n ${env.K8S_NAMESPACE} deploy/${env.APP_NAME} -c ${env.APP_NAME} -- \
@@ -570,10 +575,26 @@ pipeline {
                             kubectl exec -n ${env.K8S_NAMESPACE} deploy/${env.APP_NAME} -c ${env.APP_NAME} -- \
                                 curl -s -o /dev/null -w "%{http_code}" http://localhost/payment.html | grep 200
                         """,
-                        label: 'Verify EKS Workload Health Endpoints (/healthz, /, products, payment)'
+                        label: 'Level 1 Pod-Local Health Verification'
                     )
+                    echo '[PASS] Level 1: Pod-local application health checks passed (200 OK).'
 
-                    echo '[PASS] EKS Workload health endpoint checks passed (200 OK across all endpoints).'
+                    // LEVEL 2: Kubernetes Service Routing Health Verification
+                    echo "Level 2 Verification: Performing Kubernetes Service Routing Check via Diagnostic Pod..."
+                    sh(
+                        script: """
+                            kubectl run temp-curl-svc-check-${env.BUILD_NUMBER} --image=curlimages/curl:8.10.1 --restart=Never -n ${env.K8S_NAMESPACE} \
+                                --rm -i -- /bin/sh -c "
+                                    set -e
+                                    curl -s -o /dev/null -w '%{http_code}' http://${env.HELM_RELEASE}-service/healthz | grep 200
+                                    curl -s -o /dev/null -w '%{http_code}' http://${env.HELM_RELEASE}-service/ | grep 200
+                                    curl -s -o /dev/null -w '%{http_code}' http://${env.HELM_RELEASE}-service/products.html | grep 200
+                                    curl -s -o /dev/null -w '%{http_code}' http://${env.HELM_RELEASE}-service/payment.html | grep 200
+                                "
+                        """,
+                        label: 'Level 2 Kubernetes Service Route Verification'
+                    )
+                    echo '[PASS] Level 2: Kubernetes Service routing health checks passed for all endpoints (HTTP 200).'
                     echo '============================================================'
                 }
             }
@@ -668,7 +689,7 @@ pipeline {
             echo "EKS Cluster Target: ${env.EKS_CLUSTER_NAME} (Namespace: ${env.K8S_NAMESPACE})"
             echo "Helm Release:       ${env.HELM_RELEASE}"
             echo "Security Gates:     GitLeaks Secret Scan PASS | Trivy Vulnerability Scan PASS"
-            echo "Rollout Strategy:   RollingUpdate (maxSurge: 1, maxUnavailable: 0) PASS"
+            echo "Rollout Strategy:   RollingUpdate (maxSurge: 0, maxUnavailable: 1 - Capacity-Safe Staging Strategy) PASS"
             echo "Health Endpoints:   /healthz (200 OK), / (200 OK), products.html (200 OK), payment.html (200 OK) PASS"
             echo "Observability:      Prometheus Scraper ACTIVE | ELK Logs Ingestion ACTIVE"
             echo '============================================================'

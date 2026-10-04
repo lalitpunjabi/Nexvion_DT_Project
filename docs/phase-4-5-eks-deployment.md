@@ -78,7 +78,7 @@ Nexvion Pods (2/2 Ready Running Pods in namespace 'nexvion')
 | Resource Type | Resource Identifier | Configuration Details | Status |
 |---|---|---|---|
 | **Namespace** | `nexvion` | Dedicated workload namespace | Active |
-| **Deployment** | `deployment.apps/nexvion-web` | 2/2 ready replicas, RollingUpdate (`maxSurge: 1`, `maxUnavailable: 0`) | **2/2 Ready** |
+| **Deployment** | `deployment.apps/nexvion-web` | 2/2 ready replicas, Capacity-Safe RollingUpdate (`maxSurge: 0`, `maxUnavailable: 1`) | **2/2 Ready** |
 | **Pods** | `pod/nexvion-web-78d49686cd-*` | 2 running pods, UID 101 non-root, read-only FS, tmpfs mounts | **1/1 Running** |
 | **Service** | `service/nexvion-web-service` | `ClusterIP` (Internal IP: `10.100.27.163`, Port: 80/TCP) | Active |
 | **ConfigMap** | `configmap/nexvion-web-config` | Environment variables (`APP_NAME`, `ENVIRONMENT=staging`, `LOG_LEVEL=warn`) | Active |

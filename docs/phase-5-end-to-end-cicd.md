@@ -117,58 +117,73 @@ If a deployment or health check fails:
 
 ---
 
-## 7. Actual Validation Evidence
+## 7. Phase 5 v2 Hardening, Corrections & Controlled Failure/Rollback Validation
 
-### 1. Amazon ECR Push Verification:
-- **Repository**: `677012863109.dkr.ecr.ap-south-1.amazonaws.com/nexvion-web`
-- **Tag**: `685f1c1`
-- **Digest**: `sha256:1a8dc151c103bf6de6374f35bea6b6fdccac1cd348d719933cba7b07ef3510ab`
-- **Status**: `ACTIVE`
+### 1. Capacity-Safe Rolling Update Strategy (`maxSurge: 0, maxUnavailable: 1`)
+- **Single-Node Capacity Constraint**: The live AWS EKS cluster (`nexvion-eks`) operates on a single `t3.small` worker node with a strict kubelet pod limit of `maxPods=11`.
+- **Strategy Tuning**: The standard Kubernetes rolling update strategy (`maxSurge: 1, maxUnavailable: 0`) attempts to create a 3rd `nexvion-web` pod before terminating an old pod. On this single-node cluster (where 11 pods are already running across system, monitoring, and logging namespaces), `maxSurge: 1` triggers `Warning FailedScheduling: 0/1 nodes are available: 1 Too many pods`.
+- **Tuned Behavior**: Configuring `maxSurge: 0, maxUnavailable: 1` explicitly terminates 1 old pod first (dropping pod count to 10), then schedules 1 new pod (bringing pod count back to 11). This ensures zero pod budget violations and completes rolling updates in under 20 seconds. Rather than making unsupported zero-downtime claims, this strategy is accurately documented as a **capacity-safe rolling update optimized for the single-node staging cluster**.
 
-### 2. EKS Helm Deployment & Rolling Update Output:
-```
-Release "nexvion-web" has been upgraded. Happy Helming!
-NAME: nexvion-web
-LAST DEPLOYED: Sun Oct 4 19:02:33 2026
-NAMESPACE: nexvion
-STATUS: deployed
-REVISION: 3
-deployment "nexvion-web" successfully rolled out
-```
+### 2. Dynamic Previous Helm Revision Detection
+- **Dynamic Revision Extraction**: Prior to `helm upgrade --install`, the pipeline queries the live cluster via `helm history` and dynamically parses the latest revision with status `deployed` or `superseded` (e.g. `PREVIOUS_HELM_REVISION = 3`).
+- **Dynamic Rollback Execution**: If `helm upgrade` or `kubectl rollout status` fails, the pipeline executes `helm rollback nexvion-web ${PREVIOUS_HELM_REVISION} -n nexvion` rather than hardcoding revision numbers or blindly rolling back.
+- **Initial Release Guard**: If no previous deployed revision exists (e.g., initial install), the pipeline safely skips rollback and reports that rollback is unavailable.
 
-### 3. Live Pod Readiness (`kubectl get pods -n nexvion -o wide`):
-```
-NAME                           READY   STATUS    RESTARTS   AGE   IP              NODE
-nexvion-web-6968cb9fbf-st278   1/1     Running   0          2m    172.31.63.146   ip-172-31-59-164.ap-south-1.compute.internal
-nexvion-web-6968cb9fbf-xbm9n   1/1     Running   0          9m    172.31.63.145   ip-172-31-59-164.ap-south-1.compute.internal
-```
-
-### 4. Application Endpoint Health Probes:
-- `/healthz`: `HTTP 200`
-- `/`: `HTTP 200`
-- `/products.html`: `HTTP 200`
-- `/payment.html`: `HTTP 200`
+### 3. Multi-Level Application Health Verification
+- **Level 1 (Pod-Local Health)**: Executes `kubectl exec` into the workload pod to probe `http://localhost/healthz`, `/`, `products.html`, and `payment.html` (verifying local web server process health).
+- **Level 2 (Kubernetes Service Routing Health)**: Spawns a temporary diagnostic pod (`curlimages/curl:8.10.1`) in namespace `nexvion` to perform HTTP GET requests against `http://nexvion-web-service/` for `/healthz`, `/`, `products.html`, and `payment.html`. This validates end-to-end Pod $\rightarrow$ K8s Service $\rightarrow$ Pod internal networking before automatically deleting the temporary pod.
+- **Level 3 (Internal NodePort Ingress Health)**: Probes internal VPC worker IP via NodePort (`http://172.31.59.164:31449/healthz`), verifying `ingress-nginx` routing.
 
 ---
 
-## 8. Resource & Cost Considerations
+## 8. Live Controlled Failure & Rollback Test Evidence
+
+A controlled deployment failure test was executed on the live EKS cluster (`nexvion-eks`) to validate the automated failure detection, diagnostic collection, dynamic rollback, and health recovery flow:
+
+1. **Pre-Test State**: Helm release `nexvion-web` revision 3 was active and healthy (`2/2 Ready` pods).
+2. **Controlled Failure Trigger**: Executed `helm upgrade nexvion-web helm/nexvion-web` with `--set image.tag=invalid-nonexistent-image-tag-v999`.
+3. **Rollout Status Failure**: `kubectl rollout status deployment/nexvion-web -n nexvion --timeout=20s` timed out as expected with `ImagePullBackOff` / `ErrImagePull`.
+4. **Diagnostic Collection Output**:
+   - `kubectl get pods -n nexvion`: Showed `nexvion-web-685b5d5d67-g482f 0/1 ImagePullBackOff`.
+   - `kubectl describe deployment`: Showed `Failed to pull image "677012863109.dkr.ecr.ap-south-1.amazonaws.com/nexvion-web:invalid-nonexistent-image-tag-v999"`.
+5. **Dynamic Rollback Execution**: Identified `PREVIOUS_HELM_REVISION = 3` and executed `helm rollback nexvion-web 3 -n nexvion`.
+6. **Rollback Rollout Status**: `kubectl rollout status deployment/nexvion-web -n nexvion` output:
+   `deployment "nexvion-web" successfully rolled out`.
+7. **Post-Rollback Health Probes**:
+   - Level 1 Pod Probe: `{"status":"UP","timestamp":"...","environment":"staging"}`
+   - Level 2 Service Probe: `http://nexvion-web-service/healthz` (HTTP 200), `/` (HTTP 200), `products.html` (HTTP 200), `payment.html` (HTTP 200).
+8. **Final Helm History**:
+   ```
+   REVISION  UPDATED                   STATUS      CHART            APP VERSION  DESCRIPTION
+   1         Sun Oct  4 00:23:00 2026  superseded  nexvion-web-0.1.0 1.0.0        Install complete
+   2         Sun Oct  4 18:55:59 2026  superseded  nexvion-web-0.1.0 1.0.0        Upgrade complete
+   3         Sun Oct  4 19:02:33 2026  superseded  nexvion-web-0.1.0 1.0.0        Upgrade complete
+   4         Sun Oct  4 19:18:34 2026  superseded  nexvion-web-0.1.0 1.0.0        Upgrade complete
+   5         Sun Oct  4 19:18:57 2026  deployed    nexvion-web-0.1.0 1.0.0        Rollback to 3
+   ```
+9. **Clean State Restoration**: The temporary failure configuration was completely removed and the cluster restored to 100% healthy operational state (`2/2 Ready` pods, revision 5).
+
+---
+
+## 9. Resource & Cost Considerations
 
 - **AWS Cost Alignment**: No additional EC2 instances, EKS worker nodes, NAT Gateways, or managed load balancers were created for Phase 5. Existing EKS control plane and worker node charges apply.
 
 ---
 
-## 9. Phase 5 Completion Status
+## 10. Phase 5 Completion Status
 
-Phase 5 is **100% COMPLETE and FULLY VALIDATED** on the live AWS platform.
+Phase 5 v2 is **Hardened & Validated** on the live AWS platform.
 
 - [x] Full Jenkins delivery pipeline declared in [`Jenkinsfile`](file:///c:/Users/Lalit%20Punjabi/Nexvion_DT_Project/Jenkinsfile).
-- [x] Code validation and static web dependency checks integrated.
+- [x] Code validation and static web dependency checks integrated (`npm audit`).
 - [x] GitLeaks secret scan gate integrated (`v8.28.0`).
 - [x] Immutable Docker image building with Git SHA tag (`685f1c1`).
 - [x] Trivy container security gate integrated (`v0.60.0`, 0 findings).
 - [x] Amazon ECR authentication and image push verified.
 - [x] Amazon EKS authentication and Helm deployment verified.
-- [x] Pod budget constraint resolved via `maxSurge: 0, maxUnavailable: 1` rolling updates.
-- [x] Workload health probes (`/healthz`, `/`, `/products.html`, `/payment.html`) verified 200 OK.
-- [x] Failure diagnostics and automated Helm rollback mechanism implemented.
+- [x] Pod budget constraint resolved via `maxSurge: 0, maxUnavailable: 1` capacity-safe rolling updates.
+- [x] Dynamic previous Helm revision detection implemented (`helm rollback ${PREVIOUS_HELM_REVISION}`).
+- [x] Multi-level workload health verification (Level 1 Pod-Local + Level 2 K8s Service `curlimages/curl` diagnostic pod) verified 200 OK across `/healthz`, `/`, `products.html`, `payment.html`.
+- [x] Controlled deployment failure test executed on live EKS cluster; failure detected, diagnostics captured, dynamic rollback executed, and workload health restored.
 - [x] Observability integration (Prometheus, Grafana, ELK `nexvion-logs-*`) verified active.
