@@ -1,0 +1,189 @@
+{
+  "incident_id": "NEXVION-DEMO-001",
+  "timestamp": "2026-10-04T11:20:48.818794+00:00",
+  "namespace": "nexvion",
+  "analysis_mode": "Rule-Based Analysis",
+  "severity": "MEDIUM",
+  "severity_reason": "Application error logs or warning events detected (0 errors, 1 events).",
+  "classification": "Unknown",
+  "secondary_tags": [],
+  "confidence": 0.5,
+  "evidence": {
+    "k8s_state": {
+      "namespace": "nexvion",
+      "pods": [
+        {
+          "name": "nexvion-web-78d49686cd-jtvbw",
+          "phase": "Running",
+          "ready": true,
+          "restarts": 0,
+          "containers": [
+            {
+              "name": "nexvion-web",
+              "ready": true,
+              "restart_count": 0,
+              "waiting_reason": null,
+              "waiting_message": null,
+              "terminated_reason": null,
+              "exit_code": null
+            }
+          ],
+          "node": "ip-172-31-59-164.ap-south-1.compute.internal"
+        },
+        {
+          "name": "nexvion-web-78d49686cd-qcnwx",
+          "phase": "Running",
+          "ready": true,
+          "restarts": 0,
+          "containers": [
+            {
+              "name": "nexvion-web",
+              "ready": true,
+              "restart_count": 0,
+              "waiting_reason": null,
+              "waiting_message": null,
+              "terminated_reason": null,
+              "exit_code": null
+            }
+          ],
+          "node": "ip-172-31-59-164.ap-south-1.compute.internal"
+        }
+      ],
+      "deployments": [
+        {
+          "name": "nexvion-web",
+          "desired_replicas": 2,
+          "available_replicas": 2,
+          "ready_replicas": 2,
+          "updated_replicas": 2
+        }
+      ],
+      "hpa": [
+        {
+          "name": "nexvion-web-hpa",
+          "min_pods": 2,
+          "max_pods": 5,
+          "current_replicas": 2,
+          "desired_replicas": 2,
+          "current_metrics": [
+            {
+              "resource": {
+                "current": {
+                  "averageUtilization": 1,
+                  "averageValue": "1m"
+                },
+                "name": "cpu"
+              },
+              "type": "Resource"
+            }
+          ]
+        }
+      ],
+      "events": [
+        {
+          "type": "Warning",
+          "reason": "FailedScheduling",
+          "object": "nexvion-demo-incident-pod",
+          "message": "0/1 nodes are available: 1 Too many pods. no new claims to deallocate, preemption: 0/1 nodes are available: 1 No preemption victims found for incoming pod.",
+          "timestamp": "2026-10-04T11:11:30Z"
+        }
+      ],
+      "nodes": [
+        {
+          "name": "ip-172-31-59-164.ap-south-1.compute.internal",
+          "ready": true,
+          "instance_type": "t3.small"
+        }
+      ],
+      "summary": {
+        "total_pods": 2,
+        "ready_pods": 2,
+        "failed_pods": 0,
+        "total_restarts": 0,
+        "warning_event_count": 1,
+        "node_count": 1,
+        "node_ready_count": 1
+      }
+    },
+    "es_logs": {
+      "index_pattern": "nexvion-logs-*",
+      "query_term": "error OR warning OR NEXVION_AI_INCIDENT_DEMO",
+      "total_hits": 0,
+      "matched_logs": [],
+      "error_count": 0,
+      "warning_count": 0
+    },
+    "prom_metrics": {
+      "namespace": "nexvion",
+      "up_components": [
+        {
+          "job": "kubernetes-nodes-cadvisor",
+          "instance": "ip-172-31-59-164.ap-south-1.compute.internal",
+          "up": true
+        },
+        {
+          "job": "kubernetes-nodes",
+          "instance": "ip-172-31-59-164.ap-south-1.compute.internal",
+          "up": true
+        },
+        {
+          "job": "kubernetes-api-servers",
+          "instance": "172.31.49.112:443",
+          "up": true
+        },
+        {
+          "job": "kubernetes-service-endpoints",
+          "instance": "172.31.52.228:9153",
+          "up": true
+        },
+        {
+          "job": "kubernetes-api-servers",
+          "instance": "172.31.2.180:443",
+          "up": true
+        },
+        {
+          "job": "prometheus",
+          "instance": "localhost:9090",
+          "up": true
+        }
+      ],
+      "deployment_replicas": {},
+      "pod_metrics": [],
+      "pod_restarts": [],
+      "summary": {
+        "all_components_up": true,
+        "target_deployment_available": true,
+        "high_cpu_detected": false,
+        "high_memory_detected": false
+      }
+    }
+  },
+  "analysis": {
+    "analysis_mode": "Rule-Based Analysis",
+    "likely_root_cause": "Insufficient evidence to confirm specific root cause; system workloads are operating normally.",
+    "contributing_factors": [
+      "No active container failures or critical warning events detected.",
+      "All Kubernetes deployment replicas are ready and available."
+    ],
+    "confidence_score": 0.5,
+    "investigation_steps": [
+      "1. Continue monitoring cluster metrics via Grafana dashboards.",
+      "2. Check Elasticsearch logs for low-severity warnings.",
+      "3. Verify HPA autoscaling thresholds."
+    ],
+    "recommended_remediation": [
+      "1. Maintain routine observability monitoring.",
+      "2. Perform periodic log and metric reviews."
+    ],
+    "verification_plan": [
+      "1. Run `kubectl get pods -n nexvion` to confirm all pods are 1/1 Ready.",
+      "2. Query Elasticsearch via REST API to verify no new error logs are occurring.",
+      "3. Confirm Prometheus metrics show `kube_deployment_status_replicas_available == desired`."
+    ],
+    "limitations": [
+      "Analysis performed using Rule-Based Analysis fallback engine.",
+      "Root cause formulated from empirical heuristics, pod state, Elasticsearch logs, and Prometheus metrics.",
+      "Logs rely on ephemeral Elasticsearch staging index."
+    ]
+  }
+}

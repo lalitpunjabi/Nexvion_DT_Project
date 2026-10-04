@@ -16,7 +16,7 @@
 │      IGW, Route Table, Security Group, EC2, Elastic IP, and EIP Association             │
 │    - Ansible Configuration (`ansible/`): System hardening, Docker Engine, Jenkins      │
 ├────────────────────────────────────────────────────────────────────────────────────────┤
-│ 4. KUBERNETES, HELM, ECR, EKS & WORKLOAD DEPLOYMENT (Phase 4.1 - 4.8 Implemented)      │
+│ 4. KUBERNETES, HELM, ECR, EKS & WORKLOAD DEPLOYMENT (Phase 4.1 - 4.9 Implemented)      │
 │    - Phase 4.1 Raw Manifests (`kubernetes/`): Namespace, ConfigMap, Secret,            │
 │      Deployment, Service, Ingress, HPA (Validated on Minikube)                          │
 │    - Phase 4.2 Helm Packaging (`helm/nexvion-web/`): Templated Helm 3 Chart with      │
@@ -33,6 +33,8 @@
 │      metrics scraper and Grafana platform overview dashboards verified live             │
 │    - Phase 4.8 ELK Centralized Logging (`helm/logging/`): Fluent Bit, single-node       │
 │      Elasticsearch, and Kibana log search/visualization validated end-to-end             │
+│    - Phase 4.9 AI Incident Analysis (`tools/incident-analysis/`): Live telemetry       │
+│      collector (K8s APIs, ES logs, PromQL), 12-rule classifier, & report engine         │
 └────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -139,7 +141,18 @@
 - **AWS Cost Alignment:** No separate AWS OpenSearch, ALB, EBS volume, or extra node provisioned; operates on existing EKS worker capacity while standard EKS control plane and node charges apply.
 - **End-to-End Log Validation:** Generated unique workload log string `NEXVION_ELK_VERIFIED_LOG_20261004` from Nexvion workload `nexvion-web`, verified ingestion by Fluent Bit into Elasticsearch index `nexvion-logs-YYYY.MM.DD`, and queried log directly via REST API and Kibana status API.
 - **Detailed Specification:** See [`docs/phase-4-8-elk-centralized-logging.md`](docs/phase-4-8-elk-centralized-logging.md).
-- **Next Phase:** Phase 4.9 — AI-Assisted Incident Analysis is next.
+
+---
+
+## Phase 4.9 Overview: AI-Assisted Incident Analysis
+- **Incident Analysis Engine:** Client-side python/shell framework in `tools/incident-analysis/` & `scripts/incident-analysis/` that aggregates telemetry across K8s APIs, Elasticsearch REST APIs, and Prometheus PromQL metrics.
+- **Multi-Source Evidence Collection:** Collects workload pod phases, container exit codes, warning events, HPA status, matched log hits in `nexvion-logs-*`, and Prometheus infrastructure health.
+- **12-Category Classifier & 5-Tier Severity Model:** Automatically categorizes incidents (`CrashLoopBackOff`, `Pod Not Ready`, `Application Error`, `High CPU`, etc.) and assigns severity (`CRITICAL`, `HIGH`, `MEDIUM`, `LOW`, `INFO`) based on documented rules.
+- **Dual-Mode Intelligence:** Supports external AI Provider models (`AI-Assisted Analysis` when `AI_API_KEY` is provided) with a 100% offline, deterministic `Rule-Based Analysis` fallback engine.
+- **Structured Report Generation:** Outputs machine-readable JSON (`reports/<INCIDENT_ID>.json`) and human-readable Markdown (`reports/<INCIDENT_ID>.md`) containing root cause, contributing factors, investigation steps, remediation actions, and verification plans.
+- **Controlled Incident Validation:** Validated on live AWS EKS cluster (`nexvion-eks`) using test scenario `NEXVION-DEMO-001`, successfully retrieving live log markers and telemetry evidence.
+- **Zero Additional AWS Cost:** Uses client-side execution on top of existing EKS worker capacity without creating extra pods on the capacity-constrained worker node (`maxPods=11`).
+- **Detailed Specification:** See [`docs/phase-4-9-ai-assisted-incident-analysis.md`](docs/phase-4-9-ai-assisted-incident-analysis.md).
 
 ---
 
