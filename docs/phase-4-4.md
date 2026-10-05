@@ -93,8 +93,8 @@ An AWS CLI discovery of existing subnets in VPC `vpc-09df3f5fdabdcf81f` revealed
 | **Public IPv4 Addresses** | Node public IPs & EC2 EIP | **POTENTIALLY BILLABLE** | ~$3.60 / month per IP ($0.005 / hr) | Standard AWS public IPv4 charge (effective Feb 2024). *Potentially billable; verify account eligibility*. |
 | **EBS Storage Volumes** | Worker node root EBS volumes | **POTENTIALLY BILLABLE** | $0 – $1.60 / month | 20 GB root EBS volume per node. *Potentially billable if cumulative account storage exceeds 30 GB/mo gp2/gp3 Free Tier limit*. |
 | **Amazon ECR Storage** | `aws_ecr_repository.nexvion` (`nexvion-web`) | **POTENTIALLY BILLABLE** | $0 – $0.50 / month | Includes 500 MB storage/month in Free Tier; excess is $0.10/GB-mo. |
-| **NAT Gateway** | N/A | **AVOIDED** | **Omitted ($0 / mo)** | **Intentionally omitted** in this staging architecture, avoiding NAT Gateway hourly ($0.045/hr) and data-processing charges (~$32/mo). Worker nodes run in public subnets with IGW routes. |
-| **Application Load Balancer** | N/A | **AVOIDED** | **Omitted ($0 / mo)** | **Intentionally omitted** in this staging architecture to avoid AWS Load Balancer base hourly (~$18/mo) and LCU processing charges. |
+| **NAT Gateway** | N/A | **AVOIDED** | **Charges Avoided** | No NAT Gateway was provisioned in this staging architecture, avoiding the associated NAT Gateway hourly ($0.045/hr) and data-processing charges (~$32/mo). Worker nodes run in public subnets with IGW routes. |
+| **Application Load Balancer** | N/A | **AVOIDED** | **Charges Avoided** | No AWS Load Balancer was provisioned. `ingress-nginx` uses Kubernetes NodePort for internal validation, avoiding the associated AWS Load Balancer base hourly (~$18/mo) and LCU processing charges. |
 
 ---
 
