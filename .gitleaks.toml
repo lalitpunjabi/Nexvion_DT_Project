@@ -37,3 +37,12 @@ id = "github-pat"
 description = "Detected GitHub Personal Access Token"
 regex = '''ghp_[0-9a-zA-Z]{36}'''
 keywords = ["ghp_"]
+
+# Global Allowlist for intentional non-secret placeholders
+[allowlist]
+description = "Allowlist for intentional non-secret placeholder strings"
+regexes = [
+    '''(?i)example-api-key-placeholder''',
+    '''(?i)example-session-secret-placeholder''',
+    '''(?i)ENVIRONMENT.*staging'''
+]

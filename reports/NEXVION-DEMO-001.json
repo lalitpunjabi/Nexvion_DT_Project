@@ -1,14 +1,14 @@
 {
   "incident_id": "NEXVION-DEMO-001",
-  "timestamp": "2026-10-04T12:13:03.129843+00:00",
+  "timestamp": "2026-10-05T10:19:45.080309+00:00",
   "namespace": "nexvion",
   "analysis_mode": "AI-Assisted Analysis",
   "severity": "MEDIUM",
   "severity_reason": "Simulated incident evidence detected (2 error log entries).",
   "classification": "Dependency Failure",
   "secondary_tags": [
-    "Dependency Failure",
-    "Application Error"
+    "Application Error",
+    "Dependency Failure"
   ],
   "confidence": 0.85,
   "evidence": {
@@ -16,7 +16,7 @@
       "namespace": "nexvion",
       "pods": [
         {
-          "name": "nexvion-web-78d49686cd-jtvbw",
+          "name": "nexvion-web-6968cb9fbf-xbm9n",
           "phase": "Running",
           "ready": true,
           "restarts": 0,
@@ -34,7 +34,7 @@
           "node": "ip-172-31-59-164.ap-south-1.compute.internal"
         },
         {
-          "name": "nexvion-web-78d49686cd-qcnwx",
+          "name": "nexvion-web-6968cb9fbf-z2f9f",
           "phase": "Running",
           "ready": true,
           "restarts": 0,
@@ -82,7 +82,22 @@
           ]
         }
       ],
-      "events": [],
+      "events": [
+        {
+          "type": "Warning",
+          "reason": "FailedScheduling",
+          "object": "temp-curl-svc-check",
+          "message": "0/1 nodes are available: 1 Too many pods. no new claims to deallocate, preemption: 0/1 nodes are available: 1 No preemption victims found for incoming pod.",
+          "timestamp": "2026-10-05T10:10:24Z"
+        },
+        {
+          "type": "Warning",
+          "reason": "FailedScheduling",
+          "object": "temp-curl-svc-check",
+          "message": "0/1 nodes are available: 1 Too many pods. no new claims to deallocate, preemption: 0/1 nodes are available: 1 No preemption victims found for incoming pod.",
+          "timestamp": "2026-10-05T10:12:20Z"
+        }
+      ],
       "nodes": [
         {
           "name": "ip-172-31-59-164.ap-south-1.compute.internal",
@@ -95,15 +110,15 @@
         "ready_pods": 2,
         "failed_pods": 0,
         "total_restarts": 0,
-        "warning_event_count": 0,
+        "warning_event_count": 2,
         "node_count": 1,
         "node_ready_count": 1
       }
     },
     "es_logs": {
       "index_pattern": "nexvion-logs-*",
-      "query_term": "NEXVION_AI_INCIDENT_DEMO_20261004",
-      "total_hits": 3,
+      "query_term": "error OR warning OR NEXVION_AI_INCIDENT_DEMO",
+      "total_hits": 2,
       "matched_logs": [
         {
           "timestamp": "2026-10-04T11:55:20.351Z",
@@ -120,14 +135,6 @@
           "namespace": "nexvion",
           "stream": "stdout",
           "message": "172.31.63.144 - - [04/Oct/2026:11:52:11 +0000] \"GET /payment.html?incident=NEXVION_AI_INCIDENT_DEMO_20261004 HTTP/1.1\" 200 8468 \"-\" \"NEXVION_AI_INCIDENT_DEMO_20261004 [ERROR] database connection failure HTTP 500\" \"-\""
-        },
-        {
-          "timestamp": "2026-10-04T11:12:59.979Z",
-          "pod_name": "nexvion-web-78d49686cd-jtvbw",
-          "container_name": "nexvion-web",
-          "namespace": "nexvion",
-          "stream": "stdout",
-          "message": "172.31.63.144 - - [04/Oct/2026:11:12:59 +0000] \"GET /payment.html HTTP/1.1\" 200 8468 \"-\" \"NEXVION_AI_INCIDENT_DEMO_20261004\" \"-\""
         }
       ],
       "error_count": 2,
@@ -176,25 +183,25 @@
       },
       "pod_metrics": [
         {
-          "pod": "nexvion-web-78d49686cd-qcnwx",
+          "pod": "nexvion-web-6968cb9fbf-xbm9n",
           "container": "nexvion-web",
-          "memory_mb": 3.25,
+          "memory_mb": 3.29,
           "cpu_cores": 0.0
         },
         {
-          "pod": "nexvion-web-78d49686cd-jtvbw",
+          "pod": "nexvion-web-6968cb9fbf-z2f9f",
           "container": "nexvion-web",
-          "memory_mb": 3.86,
+          "memory_mb": 3.96,
           "cpu_cores": 0.0
         }
       ],
       "pod_restarts": [
         {
-          "pod": "nexvion-web-78d49686cd-qcnwx",
+          "pod": "nexvion-web-6968cb9fbf-xbm9n",
           "restarts": 0
         },
         {
-          "pod": "nexvion-web-78d49686cd-jtvbw",
+          "pod": "nexvion-web-6968cb9fbf-z2f9f",
           "restarts": 0
         }
       ],
@@ -207,31 +214,32 @@
     }
   },
   "analysis": {
-    "likely_root_cause": "The application is experiencing a database connectivity failure when attempting to reach the replica host db-replica-01.nexvion.internal on port 5432, resulting in HTTP 500 Internal Server Errors in the payment checkout handler.",
+    "likely_root_cause": "The application is experiencing connection failures to the backend database replica at db-replica-01.nexvion.internal:5432, resulting in HTTP 500 Internal Server Errors in the payment checkout handler.",
     "contributing_factors": [
-      "External dependency (database replica) unavailability or network partition",
-      "Misconfigured database connection string or credentials within the application",
-      "Database replica overloaded or rejecting inbound connections from the web pods"
+      "Database replica connectivity issues or network partition between the application pods and the database host",
+      "Potential database service overload or downtime on db-replica-01",
+      "Misconfigured database connection string or credentials in the application configuration"
     ],
-    "confidence_score": 0.92,
+    "confidence_score": 0.95,
     "investigation_steps": [
-      "Check network connectivity and DNS resolution from within the nexvion-web pods to db-replica-01.nexvion.internal:5432 using tools like netcat, telnet, or nslookup.",
-      "Inspect the database server health, status, and connection limits on db-replica-01.",
-      "Review application configuration maps and secrets to ensure database endpoint and port settings are correct."
+      "Check network connectivity and DNS resolution from within the nexvion-web pods to db-replica-01.nexvion.internal:5432",
+      "Inspect the status, resource utilization, and logs of the database replica server (db-replica-01)",
+      "Verify database service health, connection pools, and max connection limits",
+      "Review recent changes to database security groups, network policies, or firewall rules"
     ],
     "recommended_remediation": [
-      "Restore network access or fix security group/firewall rules blocking traffic between the Kubernetes cluster and the database host.",
-      "Restart or scale the database replica if it is unresponsive or overwhelmed.",
-      "Implement robust connection retry logic and circuit breakers in the payment checkout handler."
+      "Restore network connectivity or resolve DNS issues for db-replica-01.nexvion.internal",
+      "Restart or scale up the database replica service if it is unresponsive or overloaded",
+      "Verify and update database connection environment variables or secrets mounted in the deployment if misconfigured"
     ],
     "verification_plan": [
-      "Monitor Elasticsearch logs for the cessation of 'Connection failure to database host' error messages.",
-      "Send a test HTTP request to the payment checkout endpoint and verify a successful 200 OK response status.",
-      "Verify Prometheus metrics to ensure error rates for HTTP 500 return to zero."
+      "Monitor Elasticsearch logs for the cessation of database connection error messages",
+      "Execute test transactions against the payment checkout handler and verify successful HTTP 200 responses",
+      "Confirm through Prometheus metrics that error rates for the payment service return to baseline"
     ],
     "limitations": [
-      "Logs and metrics only confirm application-side connection failure without direct visibility into the internal state of the external database server.",
-      "Database infrastructure configuration is outside the direct scope of Kubernetes control plane metrics."
+      "Direct logs and metrics from the database server (db-replica-01) were not available in the provided evidence",
+      "Network policy and DNS configuration details were not inspected directly from the Kubernetes cluster state"
     ],
     "analysis_mode": "AI-Assisted Analysis",
     "ai_provider": "google",
