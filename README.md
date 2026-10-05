@@ -41,6 +41,11 @@
 │      Validation ➔ npm audit ➔ GitLeaks ➔ Docker Build (Git SHA) ➔ Trivy ➔ ECR Auth ➔  │
 │      ECR Push ➔ EKS Auth ➔ Helm Dry-Run ➔ Helm Upgrade ➔ Rolling Update (maxSurge: 0) ➔ │
 │      Rollout Status ➔ Endpoint Verification ➔ Diagnostics & Rollback Handling          │
+├────────────────────────────────────────────────────────────────────────────────────────┤
+│ 6. FINAL INTEGRATION AUDIT, END-TO-END VALIDATION & PROJECT CLOSURE (Phase 6.1 - 6.3) │
+│    - Phase 6.1 Final Audit: Zero blocking architecture, security, or implementation gaps │
+│    - Phase 6.2 End-to-End Validation: 20-step validation across all system layers      │
+│    - Phase 6.3 Final Project Closure: Demonstration runbook, viva Q&A, submission package│
 └────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -63,8 +68,6 @@
 - **Safe Registry Defaults:** Default execution parameters (`REGISTRY_TYPE = 'LOCAL_ONLY'`, `PUSH_TO_REGISTRY = false`) ensure fresh Jenkins builds run safely without failing on placeholder ECR URIs.
 - **Health Verification:** Post-deployment verification checks `http://localhost:8081/healthz` (200 OK) and root web pages before declaring pipeline success.
 - **Detailed Specification:** See [`docs/ci-cd.md`](docs/ci-cd.md) for full CI/CD architecture, plugin lists, credential mappings, and deployment scope documentation.
-
----
 
 ---
 
@@ -113,9 +116,6 @@
 - **ECR Image Artifact:** `677012863109.dkr.ecr.ap-south-1.amazonaws.com/nexvion-web:0d575d0` (Git SHA tag `0d575d0`).
 - **Workload Status:** `deployment.apps/nexvion-web` with 2/2 Ready running pods, UID/GID 101 non-root, read-only root filesystem.
 - **Service & Networking:** ClusterIP Service (`service/nexvion-web-service` on port 80/TCP) serving internally.
-- **Ingress Controller Status:** During Phase 4.5, the Ingress resource was declared but no Ingress Controller was installed. Ingress Controller deployment and NodePort routing were subsequently completed and validated in Phase 4.6.
-- **HPA Status:** During Phase 4.5, the HPA was configured but CPU metrics were unavailable. Metrics Server was subsequently installed and HPA CPU metrics were validated in Phase 4.6.
-- **Secret Management Status:** Kubernetes Secret contains **placeholder values only** (`API_KEY_PLACEHOLDER`, `SESSION_SECRET_PLACEHOLDER`) and is not production secret management (AWS Secrets Manager / ESO deferred).
 - **Application Endpoint Validation:** Internal HTTP validation via ClusterIP verified `/healthz` (200 OK), `/` (200 OK), `products.html` (200 OK), and `payment.html` (200 OK).
 - **Detailed Specification:** See [`docs/phase-4.5-eks-deployment.md`](docs/phase-4.5-eks-deployment.md).
 
@@ -125,54 +125,58 @@
 - **Metrics Server Installed:** `metrics-server` deployed to `kube-system` namespace. Verified `kubectl top nodes` (`32m` CPU / `50%` RAM) and `kubectl top pods -n nexvion` (`1m` CPU per pod).
 - **Active HPA Metric Validation:** `horizontalpodautoscaler/nexvion-web-hpa` active with real CPU metric calculation (`cpu: 1%/70%`, `ScalingActive = True`). Controlled load testing validated real CPU metric collection and HPA replica calculation.
 - **Cost-Conscious Ingress Controller:** Installed `ingress-nginx` controller (v1.15.1) configured with `type: NodePort` (HTTP Port `31449`, HTTPS Port `31941`), avoiding creation of a separate AWS Load Balancer and associated hourly/data-processing charges.
-- **Ingress Route & NodePort Validation:** `ingress.networking.k8s.io/nexvion-web-ingress` dynamically assigned address `10.100.51.190`. Validated 200 OK responses for `/healthz`, `/`, `products.html`, and `payment.html` internally via ClusterIP and against the EKS worker node's private VPC IP (`172.31.59.164:31449`). Public Internet exposure and DNS resolution were not validated; AWS ALB/NLB was intentionally omitted.
+- **Ingress Route & NodePort Validation:** Validated 200 OK responses for `/healthz`, `/`, `products.html`, and `payment.html` internally via ClusterIP and against the EKS worker node's private VPC IP (`172.31.59.164:31449`).
 - **Detailed Specification:** See [`docs/phase-4-6-metrics-hpa-external-access.md`](docs/phase-4-6-metrics-hpa-external-access.md).
 
 ---
 
 ## Phase 4.7 Overview: Prometheus & Grafana Observability Foundation
 - **Prometheus Deployed:** `prometheus-community/prometheus` (v27.5.0) deployed to namespace `monitoring` using existing EKS worker capacity with staging parameters (2d retention, `emptyDir` storage, 128Mi RAM request).
-- **Grafana Deployed:** `grafana/grafana` (v10.5.15) deployed to namespace `monitoring` with declarative Prometheus datasource and pre-loaded `Nexvion EKS Platform Observability` dashboard. Plaintext passwords omitted from Git; credentials injected dynamically at deployment time.
+- **Grafana Deployed:** `grafana/grafana` (v10.5.15) deployed to namespace `monitoring` with declarative Prometheus datasource and pre-loaded `Nexvion EKS Platform Observability` dashboard.
 - **PromQL Metrics Scraped & Validated:** Verified live collection for node CPU/RAM usage, `nexvion-web` pod CPU/RAM, deployment replicas (`2` available), HPA replicas (`2` current), and node readiness (`1` node ready).
-- **Resource & Cost Optimization:** Observability workloads run on existing EKS worker node capacity to avoid separate AWS managed service charges (EKS control plane and worker node costs apply).
-- **Workload & Ingress Preserved:** `deployment.apps/nexvion-web` (2/2 Ready), HPA (`cpu: 1%/70%`), and `ingress-nginx` NodePort routing remain 100% active and healthy.
+- **Detailed Specification:** See [`docs/phase-4-7-prometheus-grafana.md`](docs/phase-4-7-prometheus-grafana.md).
+
 ---
 
 ## Phase 4.8 Overview: ELK Centralized Logging
-- **Declarative Manifests & Values:** Maintained under `helm/logging/` using declarative Kubernetes manifests (`elk-stack.yaml`, `fluent-bit.yaml`) and Helm-oriented configuration values (the primary Helm chart remains `helm/nexvion-web`).
-- **Fluent Bit Deployed:** `fluent/fluent-bit` (v2.2.0) DaemonSet deployed in namespace `logging` with `Log_Level info`, CRI log parsing, and Kubernetes metadata enrichment.
-- **Elasticsearch Deployed:** Lightweight single-node `docker.elastic.co/elasticsearch/elasticsearch:7.17.18` deployed in namespace `logging` with low JVM heap limits (`-Xms128m -Xmx128m`) tailored for `t3.small` resource safety.
-- **Kibana Deployed:** `docker.elastic.co/kibana/kibana:7.17.18` deployed in namespace `logging` connected to Elasticsearch with Node.js memory safety (`--max-old-space-size=256`).
-- **Security Scope:** Staging authentication disabled (`xpack.security.enabled=false`); strictly isolated via internal `ClusterIP` services (ports 9200/5601) with zero public exposure (production deployments must enable authentication and secret injection).
-- **AWS Cost Alignment:** No separate AWS OpenSearch, ALB, EBS volume, or extra node provisioned; operates on existing EKS worker capacity while standard EKS control plane and node charges apply.
-- **End-to-End Log Validation:** Generated unique workload log string `NEXVION_ELK_VERIFIED_LOG_20261004` from Nexvion workload `nexvion-web`, verified ingestion by Fluent Bit into Elasticsearch index `nexvion-logs-YYYY.MM.DD`, and queried log directly via REST API and Kibana status API.
+- **Declarative Manifests & Values:** Maintained under `helm/logging/` using declarative Kubernetes manifests (`elk-stack.yaml`, `fluent-bit.yaml`).
+- **Fluent Bit Deployed:** `fluent/fluent-bit` (v2.2.0) DaemonSet deployed in namespace `logging` with CRI log parsing and Kubernetes metadata enrichment.
+- **Elasticsearch & Kibana Deployed:** Single-node Elasticsearch (7.17.18) and Kibana (7.17.18) deployed in namespace `logging` with low JVM heap limits (`-Xms128m -Xmx128m`) tailored for `t3.small` resource safety.
+- **End-to-End Log Validation:** Generated workload logs verified ingested by Fluent Bit into Elasticsearch index `nexvion-logs-YYYY.MM.DD` and searchable via Kibana.
 - **Detailed Specification:** See [`docs/phase-4-8-elk-centralized-logging.md`](docs/phase-4-8-elk-centralized-logging.md).
 
 ---
 
 ## Phase 4.9 Overview: AI-Assisted Incident Analysis
-- **Incident Analysis Engine:** Client-side python/shell framework in `tools/incident-analysis/` & `scripts/incident-analysis/` that aggregates telemetry across K8s APIs, Elasticsearch REST APIs, and Prometheus PromQL metrics.
-- **Multi-Source Evidence Collection:** Collects workload pod phases, container exit codes, warning events, HPA status, matched log hits in `nexvion-logs-*`, and Prometheus infrastructure health.
-- **12-Category Classifier & 5-Tier Severity Model:** Automatically categorizes incidents (`CrashLoopBackOff`, `Pod Not Ready`, `Application Error`, `High CPU`, etc.) and assigns severity (`CRITICAL`, `HIGH`, `MEDIUM`, `LOW`, `INFO`) based on documented rules.
-- **Dual-Mode Intelligence:** Supports external AI Provider models (`AI-Assisted Analysis` when `AI_API_KEY` is provided) with a 100% offline, deterministic `Rule-Based Analysis` fallback engine.
-- **Structured Report Generation:** Outputs machine-readable JSON (`reports/<INCIDENT_ID>.json`) and human-readable Markdown (`reports/<INCIDENT_ID>.md`) containing root cause, contributing factors, investigation steps, remediation actions, and verification plans.
-- **Controlled Incident Validation:** Validated on live AWS EKS cluster (`nexvion-eks`) using test scenario `NEXVION-DEMO-001`, successfully retrieving live log markers and telemetry evidence.
-- **AWS Cost Alignment:** No dedicated AWS infrastructure was provisioned for Phase 4.9. The analyzer runs at script/client level using existing EKS resources. Existing EKS control-plane and worker-node charges still apply.
+- **Incident Analysis Engine:** Client-side python/shell framework in `tools/incident-analysis/` that aggregates telemetry across K8s APIs, Elasticsearch REST APIs, and Prometheus PromQL metrics.
+- **Classifier & Severity Engine:** Automatically categorizes incidents (`CrashLoopBackOff`, `Dependency Failure`, `High CPU`, etc.) and assigns severity (`CRITICAL`, `HIGH`, `MEDIUM`, `LOW`, `INFO`).
+- **Dual-Mode Intelligence:** Supports Google Gemini AI (`AI-Assisted Analysis` when `AI_API_KEY` is provided) with a 100% offline, deterministic `Rule-Based Analysis` fallback.
 - **Detailed Specification:** See [`docs/phase-4-9-ai-assisted-incident-analysis.md`](docs/phase-4-9-ai-assisted-incident-analysis.md).
 
 ---
 
-## Phase 5 Overview: End-to-End CI/CD Integration (v2 Hardened)
-- **Automated Delivery Pipeline:** [`Jenkinsfile`](Jenkinsfile) integrates all Phase 2–4 components into a unified 8-stage automated delivery flow connecting GitHub source control to Amazon EKS cluster deployments.
-- **Dependency & Code Validation:** Executes Node.js file validation (`node -c`) and `npm audit --audit-level=high` dependency scanner before container compilation.
-- **Secret & Container Scanning:** Preserves GitLeaks secret detection (`v8.28.0`) and Trivy container vulnerability scanning (`v0.60.0`) enforced on the exact Git SHA build artifact (`nexvion-web:${GIT_SHA}`).
-- **AWS ECR Push & Verification:** Authenticates via `aws ecr get-login-password`, tags image with immutable Git commit SHA (`685f1c1`), pushes to ECR repository `677012863109.dkr.ecr.ap-south-1.amazonaws.com/nexvion-web:${GIT_SHA}`, and verifies manifest digest existence prior to deployment.
-- **AWS EKS & Helm Deployment:** Configures `kubectl` context (`aws eks update-kubeconfig`), executes `helm lint` and `helm upgrade --install --dry-run` pre-flight validation, and deploys REVISION to namespace `nexvion` using `helm/nexvion-web/values-prod.yaml` (`environment: "staging"` preserved).
-- **Capacity-Safe Rolling Update:** Tuned deployment strategy to `maxSurge: 0` and `maxUnavailable: 1` to strictly adhere to single `t3.small` EKS worker node capacity (`maxPods=11`), terminating 1 old pod before scheduling 1 replacement pod.
-- **Multi-Level Endpoint Health Verification:** Monitors rollout via `kubectl rollout status` and executes Level 1 (pod-local) and Level 2 (Kubernetes Service-level using temporary `curlimages/curl` pod) HTTP probes for `/healthz`, `/`, `products.html`, and `payment.html` (all HTTP 200 OK).
-- **Dynamic Automated Rollback:** Automatically extracts the previous deployed Helm revision prior to upgrade (`PREVIOUS_HELM_REVISION`), collects diagnostics on rollout failure, and executes `helm rollback nexvion-web ${PREVIOUS_HELM_REVISION} -n nexvion` (validated via live controlled failure test).
-- **Backward Compatibility:** Preserves `LOCAL_ONLY` parameterization for local Docker Compose staging (`localhost:8081`) while supporting parameters (`REGISTRY_TYPE`, `DEPLOY_TARGET`, `PUSH_TO_REGISTRY`, `DEPLOY_EKS`).
+## Phase 5 Overview: End-to-End CI/CD Integration & Hardened Rollback
+- **Automated Delivery Pipeline:** [`Jenkinsfile`](Jenkinsfile) integrates all components into an 8-stage automated delivery flow connecting GitHub source control to Amazon EKS cluster deployments.
+- **Capacity-Safe Rolling Update:** Tuned deployment strategy to `maxSurge: 0` and `maxUnavailable: 1` to strictly adhere to single `t3.small` EKS worker node capacity (`maxPods=11`).
+- **Dynamic Automated Rollback:** Automatically extracts previous deployed Helm revision prior to upgrade, monitors rollout timeout (300s), collects diagnostics on failure, and executes `helm rollback`.
 - **Detailed Specification:** See [`docs/phase-5-end-to-end-cicd.md`](docs/phase-5-end-to-end-cicd.md).
+
+---
+
+## Phase 6 Overview: Final Validation, Audit & Project Closure (Phases 6.1 – 6.3)
+- **Phase 6.1 Final Integration Audit:** Audit verified zero blocking gaps in architecture, security, or implementation.
+- **Phase 6.2 Final End-to-End Validation:** Verified 20 live validation steps across CI/CD, security scanning, container build, ECR, EKS, Helm, health probes, HPA, Prometheus, Grafana, ELK, AI analysis, and failure recovery ([docs/phase-6-2.md](docs/phase-6-2.md)).
+- **Phase 6.3 Final Project Closure:** Prepared complete submission package including 20-step demonstration runbook ([docs/final-demo-runbook.md](docs/final-demo-runbook.md)), viva Q&A guide ([docs/viva-questions-and-answers.md](docs/viva-questions-and-answers.md)), and final project summary ([docs/final-project-summary.md](docs/final-project-summary.md)).
+
+---
+
+## Current Staging Limitations
+
+The platform operates in a cost-constrained **staging environment** with the following explicit technical scope boundaries:
+1. **Single Worker Node**: Deployed on a single EC2 `t3.small` instance (2 vCPUs, 2 GB RAM, `maxPods=11`).
+2. **Capacity-Safe Rolling Update**: Uses `maxSurge: 0, maxUnavailable: 1` to prevent pod quota exhaustion.
+3. **Internal NodePort Ingress**: Uses NGINX Ingress NodePort `31449` without an AWS Load Balancer (ALB/NLB) or Route 53 public DNS to eliminate hourly AWS fees.
+4. **Single-Node Logging & Storage**: Elasticsearch and Prometheus use single-node staging parameters and `emptyDir` volumes.
 
 ---
 
@@ -208,32 +212,6 @@ kubectl apply --dry-run=client -f kubernetes/
 helm lint helm/nexvion-web
 helm template nexvion-web helm/nexvion-web -f helm/nexvion-web/values-dev.yaml
 
-# 10. Install Helm Release on Minikube
-helm install nexvion-web helm/nexvion-web -f helm/nexvion-web/values-dev.yaml --namespace nexvion --create-namespace
-
-# 11. Deploy Local Staging Stack (Docker Compose)
-docker compose up -d --force-recreate
-
-# 12. Verify Endpoint Health
-curl -i http://localhost:8081/healthz
-curl -i http://localhost:8081/
-
-# 11. Stop Container Stack (Optional Cleanup)
-docker compose down
+# 10. Run AI Incident Analyzer on Staging Telemetry
+python tools/incident-analysis/incident_analyzer.py --incident-id NEXVION-DEMO-001 --namespace nexvion --output-dir reports
 ```
-
----
-
-### Jenkins Credentials
-
-The current Phase 2 default pipeline uses:
-
-- `REGISTRY_TYPE=LOCAL_ONLY`
-- `PUSH_TO_REGISTRY=false`
-
-Therefore, external registry credentials are NOT required for the default staging pipeline.
-
-| Credential ID | Type | Status | Usage |
-| :--- | :--- | :--- | :--- |
-| `github-webhook-secret` | Secret text | Optional | GitHub webhook authentication |
-| `ecr-credentials` | Username with Password | Future/Optional | Only required if AWS ECR registry push is explicitly enabled |
