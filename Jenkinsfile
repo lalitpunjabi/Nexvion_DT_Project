@@ -484,7 +484,15 @@ pipeline {
                         echo "Verifying EKS cluster connectivity..."
                         sh(script: "kubectl cluster-info", label: 'Check EKS Cluster Info')
                         sh(script: "kubectl get nodes", label: 'Check EKS Nodes')
-                        sh(script: "kubectl get namespace ${env.K8S_NAMESPACE} || kubectl create namespace ${env.K8S_NAMESPACE}", label: 'Verify Namespace')
+                        sh(
+                            script: """
+                                kubectl get namespace ${env.K8S_NAMESPACE} || kubectl create namespace ${env.K8S_NAMESPACE}
+                                kubectl label namespace ${env.K8S_NAMESPACE} app.kubernetes.io/managed-by=Helm --overwrite
+                                kubectl annotate namespace ${env.K8S_NAMESPACE} meta.helm.sh/release-name=${env.HELM_RELEASE} --overwrite
+                                kubectl annotate namespace ${env.K8S_NAMESPACE} meta.helm.sh/release-namespace=${env.K8S_NAMESPACE} --overwrite
+                            """,
+                            label: 'Verify Namespace and Helm Ownership'
+                        )
 
                         // 2. Pre-Deployment Helm Manifest Rendering & Validation
                         echo "Running Helm lint check..."
