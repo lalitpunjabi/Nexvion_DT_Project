@@ -195,7 +195,17 @@ pipeline {
                     // Infrastructure & Helm Syntax Checks
                     if (fileExists('helm/nexvion-web/Chart.yaml')) {
                         echo 'Validating Helm Chart structure...'
-                        sh(script: 'helm lint helm/nexvion-web', label: 'Helm Lint Check')
+                        sh(
+                            script: '''
+                                if command -v helm >/dev/null 2>&1; then
+                                    helm lint helm/nexvion-web
+                                else
+                                    echo "[NOTICE] 'helm' CLI is not found on host PATH. Linting Helm chart via Docker container (alpine/helm)..."
+                                    docker run --rm -v "${WORKSPACE}:/apps" alpine/helm:3.16.2 lint helm/nexvion-web
+                                fi
+                            ''',
+                            label: 'Helm Lint Check'
+                        )
                         echo '[PASS] Helm chart lint check completed successfully.'
                     }
 
