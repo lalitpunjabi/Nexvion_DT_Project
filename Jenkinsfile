@@ -371,17 +371,28 @@ pipeline {
                     echo "Target ECR Image:    ${ecrShaTag}"
 
                     echo "Authenticating Docker to Amazon ECR..."
-                    sh(
-                        script: """
-                            if command -v aws >/dev/null 2>&1; then
-                                aws ecr get-login-password --region ${env.AWS_REGION} | docker login --username AWS --password-stdin ${ecrHost}
-                            else
-                                echo "[NOTICE] 'aws' CLI is not found on host PATH. Authenticating to ECR via Docker container (amazon/aws-cli)..."
-                                docker run --rm -v ~/.aws:/root/.aws amazon/aws-cli ecr get-login-password --region ${env.AWS_REGION} | docker login --username AWS --password-stdin ${ecrHost}
-                            fi
-                        """,
-                        label: 'Amazon ECR Login'
-                    )
+                    def ecrLoginCmd = {
+                        sh(
+                            script: """
+                                if command -v aws >/dev/null 2>&1; then
+                                    aws ecr get-login-password --region ${env.AWS_REGION} | docker login --username AWS --password-stdin ${ecrHost}
+                                else
+                                    echo "[NOTICE] 'aws' CLI is not found on host PATH. Authenticating to ECR via Docker container (amazon/aws-cli)..."
+                                    docker run --rm -v ~/.aws:/root/.aws amazon/aws-cli ecr get-login-password --region ${env.AWS_REGION} | docker login --username AWS --password-stdin ${ecrHost}
+                                fi
+                            """,
+                            label: 'Amazon ECR Login'
+                        )
+                    }
+
+                    try {
+                        withCredentials([usernamePassword(credentialsId: 'ecr-credentials', usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY')]) {
+                            ecrLoginCmd()
+                        }
+                    } catch (Exception credErr) {
+                        echo "[NOTICE] Jenkins credential 'ecr-credentials' not bound. Continuing with host AWS CLI / IAM Instance Profile default credentials..."
+                        ecrLoginCmd()
+                    }
 
                     echo "Tagging local image for Amazon ECR repository..."
                     sh(script: "docker tag ${localImage} ${ecrShaTag}", label: 'Tag ECR SHA Image')
@@ -393,27 +404,38 @@ pipeline {
                     sh(script: "docker push ${ecrBuildTag}", label: 'Push Build Number Image to ECR')
 
                     echo "Verifying image digest in Amazon ECR..."
-                    def ecrDigest = sh(
-                        script: """
-                            if command -v aws >/dev/null 2>&1; then
-                                aws ecr describe-images \
-                                    --repository-name ${env.APP_NAME} \
-                                    --image-ids imageTag=${commitSha} \
-                                    --region ${env.AWS_REGION} \
-                                    --query 'imageDetails[0].imageDigest' \
-                                    --output text
-                            else
-                                docker run --rm -v ~/.aws:/root/.aws amazon/aws-cli ecr describe-images \
-                                    --repository-name ${env.APP_NAME} \
-                                    --image-ids imageTag=${commitSha} \
-                                    --region ${env.AWS_REGION} \
-                                    --query 'imageDetails[0].imageDigest' \
-                                    --output text
-                            fi
-                        """,
-                        returnStdout: true,
-                        label: 'Verify ECR Image Existence'
-                    ).trim()
+                    def ecrDigestCmd = {
+                        return sh(
+                            script: """
+                                if command -v aws >/dev/null 2>&1; then
+                                    aws ecr describe-images \
+                                        --repository-name ${env.APP_NAME} \
+                                        --image-ids imageTag=${commitSha} \
+                                        --region ${env.AWS_REGION} \
+                                        --query 'imageDetails[0].imageDigest' \
+                                        --output text
+                                else
+                                    docker run --rm -v ~/.aws:/root/.aws amazon/aws-cli ecr describe-images \
+                                        --repository-name ${env.APP_NAME} \
+                                        --image-ids imageTag=${commitSha} \
+                                        --region ${env.AWS_REGION} \
+                                        --query 'imageDetails[0].imageDigest' \
+                                        --output text
+                                fi
+                            """,
+                            returnStdout: true,
+                            label: 'Verify ECR Image Existence'
+                        ).trim()
+                    }
+
+                    def ecrDigest = ""
+                    try {
+                        withCredentials([usernamePassword(credentialsId: 'ecr-credentials', usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY')]) {
+                            ecrDigest = ecrDigestCmd()
+                        }
+                    } catch (Exception credErr) {
+                        ecrDigest = ecrDigestCmd()
+                    }
 
                     if (!ecrDigest || ecrDigest == "None") {
                         error("ECR PUSH FAILURE: Image ${ecrShaTag} was not found in Amazon ECR repository after push.")
