@@ -1,66 +1,66 @@
-# Nexvion CI/CD Pipeline & DevSecOps Platform Specification (Phase 2 Hardened)
+# Nexvion CI/CD Pipeline & DevSecOps Platform Specification (Final Integrated Scope)
 
 ## Architecture & Lifecycle Environments
 
-This pipeline architecture establishes three distinct operational scopes:
+This pipeline architecture establishes the complete integrated operational delivery model:
 
 ```
 ┌────────────────────────────────────────────────────────────────────────────────────────┐
 │ 1. LOCAL VALIDATION (Developer Workstation - Executed & Verified)                      │
 │    - Manual CLI execution: docker build, docker compose, gitleaks, trivy, curl checks  │
 ├────────────────────────────────────────────────────────────────────────────────────────┤
-│ 2. LIVE JENKINS EXECUTION (Automated CI/CD Pipeline - Phase 2 Configured)              │
-│    - Declarative Jenkinsfile on Linux Runner Agent (`label 'linux'`)                   │
-│    - Automated Gates: Code Validation ➔ GitLeaks ➔ Docker Build ➔ Trivy ➔ Staging     │
-│    - Note: Pipeline syntax verified; live execution triggers upon Jenkins job run.    │
+│ 2. LIVE JENKINS EXECUTION (Automated End-to-End CI/CD Pipeline - Fully Implemented)     │
+│    - Declarative Jenkinsfile on Jenkins Runner Agent                                  │
+│    - Automated Gates: Code Audit ➔ GitLeaks ➔ Docker Build ➔ Trivy Scan ➔ ECR Push ➔ │
+│      EKS Kubeconfig ➔ Helm Upgrade ➔ Rolling Update ➔ Health Verification ➔ Rollback   │
 ├────────────────────────────────────────────────────────────────────────────────────────┤
-│ 3. INFRASTRUCTURE & CONFIG MANAGEMENT (Phase 3 Implemented)                            │
-│    - Infrastructure as Code (Phase 3 Terraform) + Ansible Configuration                │
+│ 3. INFRASTRUCTURE & CONFIG MANAGEMENT (Terraform & Ansible Implemented)                 │
+│    - Infrastructure as Code (Terraform) + System Configuration (Ansible)              │
 ├────────────────────────────────────────────────────────────────────────────────────────┤
-│ 4. FUTURE KUBERNETES & CLOUD PLATFORM (Phase 4 Target - Future Scope)                  │
-│    - Amazon EKS + Helm Chart Rolling Updates with Immutable Git SHA Tags (Phase 4)     │
+│ 4. CLOUD KUBERNETES DEPLOYMENT & OBSERVABILITY (Amazon EKS & Helm Implemented)          │
+│    - Amazon EKS Cluster (`nexvion-eks` v1.36.4) + Helm 3 Rolling Updates + HPA +       │
+│      Prometheus/Grafana Observability + ELK Logging + AI Incident Analyzer             │
 └────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
 ## Target Agent Environment
-- **Intended Jenkins Runner:** Linux Agent (Ubuntu / Alpine / Amazon Linux) with Docker socket access.
-- **Node Label:** `label 'linux'`
-- **Shell Executor:** Standard Linux `/bin/sh` (POSIX compliant). No Windows-specific CMD/PowerShell steps required in Jenkinsfile.
+- **Jenkins Runner:** Linux Agent / Built-in Node with Docker socket and AWS CLI access.
+- **Shell Executor:** Standard Linux `/bin/sh` (POSIX compliant).
 
 ---
 
-## AWS ECR Authentication Strategy (Phase 2 vs Future Phase 4 Scope)
+## AWS ECR & EKS Authentication Strategy
 
-> [!NOTE]
-> **Phase 2 / Phase 3 Local & Staging Pipeline Strategy:**
-> For local testing and current staging pipelines (`REGISTRY_TYPE = 'LOCAL_ONLY'`), image building and staging deployments occur locally on the EC2 host via Docker Compose without requiring external registry credentials.
->
-> **Future Production Strategy (IAM Roles & IRSA - Phase 4 Scope):**
-> In Phase 4 (Kubernetes EKS deployment), static credentials can be replaced by IAM Instance Profiles or IRSA (IAM Roles for Service Accounts) using short-lived tokens generated via `aws ecr get-login-password --region ap-south-1`.
+- **ECR Authentication:** Uses `aws ecr get-login-password --region ap-south-1` wrapped in `withCredentials` binding `ecr-credentials` (or host IAM Instance Profile fallback).
+- **EKS Kubeconfig Generation:** Executes `aws eks update-kubeconfig --region ap-south-1 --name nexvion-eks` inside Stage 7.
+- **Security Group Access:** EKS Cluster Security Group authorizes TCP port 443 inbound from the VPC CIDR (`172.31.0.0/16`), enabling `kubectl` control plane connectivity.
 
 ---
 
-## Container Registry Defaults & Safety Controls
+## Container Registry Parameters & Controls
 
-- **Default Parameters:**
-  - `REGISTRY_TYPE`: `'LOCAL_ONLY'` (Prevents fresh default Jenkins jobs from attempting to push to placeholder ECR URIs).
-  - `PUSH_TO_REGISTRY`: `false` (Must be explicitly enabled when real ECR URI and credentials are present).
-- **Supported Targets:** `LOCAL_ONLY` (Default), `AWS_ECR` (Target container registry).
+- **Supported Registries:** `AWS_ECR` (Primary Cloud Target), `LOCAL_ONLY` (Development fallback).
+- **Deployment Targets:** `EKS` (Primary Amazon EKS cluster), `LOCAL_DOCKER` (Staging fallback), `BOTH`.
+- **Primary Parameters:**
+  - `REGISTRY_TYPE`: `AWS_ECR`
+  - `DEPLOY_TARGET`: `EKS`
+  - `PUSH_TO_REGISTRY`: `true`
+  - `DEPLOY_EKS`: `true`
 
 ---
 
-## Image Tagging Strategy & Kubernetes Best Practices
+## Image Tagging Strategy & Immutability Controls
 
-- **Primary Immutable Tag (Git SHA):** `${APP_NAME}:${GIT_COMMIT_SHORT}` (e.g., `nexvion-web:a1b2c3d`)
+- **Primary Immutable Tag (Git SHA):** `nexvion-web:${GIT_COMMIT_SHORT}` (e.g., `nexvion-web:4448d92`)
   - **Rationale:** Guarantees deterministic, traceable, and audit-compliant deployments.
 - **Secondary Tags:** `${APP_NAME}:${BUILD_NUMBER}` and `${APP_NAME}:latest`.
-- **Kubernetes Deployment Rule (Phase 4 Requirement):** Production Kubernetes manifests and Helm charts MUST use immutable Git SHA image tags (`nexvion-web:a1b2c3d`) rather than `:latest` to prevent untracked drift, ensure atomic rollbacks, and guarantee pod immutability.
+- **Artifact Immutability:** Amazon ECR tag mutability configured as `IMMUTABLE` with AES256 server-side encryption.
 
 ---
 
-## Pinned DevSecOps Scanner Tool Versions
+## DevSecOps Scanner Tool Integration
 
 | Scanner Tool | Pinned Version Tag | Execution Command | Hard Security Gate Behavior |
 | :--- | :--- | :--- | :--- |
@@ -69,58 +69,29 @@ This pipeline architecture establishes three distinct operational scopes:
 
 ---
 
-## GitLeaks Secret Scanner Configuration (`.gitleaks.toml`)
+## Pipeline Stage Workflow
 
-- **Strict Scanning Policy:** Broad directory exclusions (e.g., `docs/.*` or `README.md`) have been removed. All documentation, source code, and configuration files are scanned.
-- **Scan Verification:** Verified clean locally across 782+ KB of codebase files (`0 leaks found`).
+1. **Checkout & Metadata Discovery:** Clones repository, extracts short Git SHA (`GIT_COMMIT_SHA`).
+2. **Validate & Dependency Security Scan:** Validates static workload files, runs JavaScript syntax checks (`node -c`), and validates Docker Compose structure.
+3. **Secret Scan (GitLeaks):** Executes GitLeaks v8.28.0. Halts pipeline if hardcoded secrets are found.
+4. **Docker Build:** Builds Docker image with tags `:GIT_SHA`, `:BUILD_NUMBER`, `:latest`.
+5. **Container Security Gate (Trivy):** Executes Trivy 0.60.0 container vulnerability scan. Halts pipeline on `HIGH` or `CRITICAL` CVEs.
+6. **Authenticate & Push to ECR:** Logins to AWS ECR and pushes immutable Git SHA image artifact.
+7. **EKS Helm Deployment & Rolling Update:**
+   - Authenticates `kubectl` to EKS (`nexvion-eks`).
+   - Verifies namespace `nexvion` and attaches Helm ownership metadata (`app.kubernetes.io/managed-by: Helm`).
+   - Runs `helm lint` and dry-run rendering.
+   - Executes live `helm upgrade --install` with capacity-safe rolling update parameters (`maxSurge: 0, maxUnavailable: 1`).
+   - Verifies rollout status (`kubectl rollout status --timeout=300s`).
+   - Executes multi-level HTTP 200 health checks (pod-local + service routing).
+   - Dynamic Automated Rollback: If rollout fails or times out, automatically executes `helm rollback` to previous deployed revision.
+8. **Post Diagnostics & Summary:** Outputs workload summary and container diagnostic logs.
 
 ---
 
-## Pipeline Stages Summary
+## Summary of Credentials
 
-1. **Checkout:** Clones repository, extracts Git SHA (`GIT_COMMIT_SHORT`).
-2. **Validate:** Validates required files, runs Node.js syntax checks (`node -c`), tests `docker compose config`.
-3. **Secret Scan:** Executes GitLeaks v8.28.0. Stops pipeline on detection.
-4. **Docker Build:** Builds image tagged with Git SHA, Build Number, and Latest.
-5. **Image Scan:** Executes Trivy 0.60.0. Stops pipeline if HIGH/CRITICAL CVEs are found.
-6. **Registry Push:** Authenticates and pushes primary immutable Git SHA tag to AWS ECR (when enabled).
-7. **Staging Deployment:** Deploys local staging container stack using Docker Compose (`docker compose up -d --force-recreate`). (Will be replaced by Kubernetes in Phase 4).
-8. **Health Check:** Verifies HTTP GET `/healthz` (200 OK) and root `/` (200 OK). Stops pipeline on health failure.
-
----
-
-## Jenkins Credentials
-
-| Credential ID | Credential Type | Usage & Description |
+| Credential ID | Credential Type | Description |
 | :--- | :--- | :--- |
-| `ecr-credentials` | Username with Password | Temporary Phase 2 fallback AWS credentials (Access Key / Secret Key). Replaced by IAM Roles in Phase 3/4. |
-| `github-webhook-secret` | Secret text | Webhook payload signature secret. |
-
----
-
-## Local Validation Commands
-
-```bash
-# 1. Validate JavaScript syntax
-node -c script.js; node -c payment.js
-
-# 2. Validate Docker Compose configuration
-docker compose config
-
-# 3. Execute GitLeaks Secret Scan (Pinned Version v8.28.0)
-docker run --rm -v "${PWD}:/path" zricethezav/gitleaks:v8.28.0 detect --source="/path" -c="/path/.gitleaks.toml" --no-git -v
-
-# 4. Build Docker Image (Using Git SHA as Primary Tag)
-GIT_SHA=$(git rev-parse --short=7 HEAD)
-docker build -t nexvion-web:${GIT_SHA} -t nexvion-web:latest .
-
-# 5. Execute Trivy Vulnerability Scan (Pinned Version 0.60.0)
-docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:0.60.0 image --severity HIGH,CRITICAL --exit-code 1 nexvion-web:${GIT_SHA}
-
-# 6. Deploy Staging Stack
-docker compose up -d --force-recreate
-
-# 7. Verify Endpoint Health
-curl -i http://localhost:8081/healthz
-curl -i http://localhost:8081/
-```
+| `ecr-credentials` | Username with Password | AWS Access Key ID (`AWS_ACCESS_KEY_ID`) and Secret Access Key (`AWS_SECRET_ACCESS_KEY`). |
+| `github-nexvion-fine-grained` | Git Username & PAT | GitHub Fine-Grained PAT for repository checkout. |
