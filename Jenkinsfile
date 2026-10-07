@@ -373,7 +373,12 @@ pipeline {
                     echo "Authenticating Docker to Amazon ECR..."
                     sh(
                         script: """
-                            aws ecr get-login-password --region ${env.AWS_REGION} | docker login --username AWS --password-stdin ${ecrHost}
+                            if command -v aws >/dev/null 2>&1; then
+                                aws ecr get-login-password --region ${env.AWS_REGION} | docker login --username AWS --password-stdin ${ecrHost}
+                            else
+                                echo "[NOTICE] 'aws' CLI is not found on host PATH. Authenticating to ECR via Docker container (amazon/aws-cli)..."
+                                docker run --rm -v ~/.aws:/root/.aws amazon/aws-cli ecr get-login-password --region ${env.AWS_REGION} | docker login --username AWS --password-stdin ${ecrHost}
+                            fi
                         """,
                         label: 'Amazon ECR Login'
                     )
@@ -390,12 +395,21 @@ pipeline {
                     echo "Verifying image digest in Amazon ECR..."
                     def ecrDigest = sh(
                         script: """
-                            aws ecr describe-images \
-                                --repository-name ${env.APP_NAME} \
-                                --image-ids imageTag=${commitSha} \
-                                --region ${env.AWS_REGION} \
-                                --query 'imageDetails[0].imageDigest' \
-                                --output text
+                            if command -v aws >/dev/null 2>&1; then
+                                aws ecr describe-images \
+                                    --repository-name ${env.APP_NAME} \
+                                    --image-ids imageTag=${commitSha} \
+                                    --region ${env.AWS_REGION} \
+                                    --query 'imageDetails[0].imageDigest' \
+                                    --output text
+                            else
+                                docker run --rm -v ~/.aws:/root/.aws amazon/aws-cli ecr describe-images \
+                                    --repository-name ${env.APP_NAME} \
+                                    --image-ids imageTag=${commitSha} \
+                                    --region ${env.AWS_REGION} \
+                                    --query 'imageDetails[0].imageDigest' \
+                                    --output text
+                            fi
                         """,
                         returnStdout: true,
                         label: 'Verify ECR Image Existence'
