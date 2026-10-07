@@ -716,24 +716,35 @@ except Exception:
             echo 'PIPELINE EXECUTION COMPLETE — DIAGNOSTICS & SUMMARY'
             echo '============================================================'
 
-            sh(
-                script: '''
-                    echo "=============================="
-                    echo "Docker Diagnostics"
-                    echo "=============================="
-                    docker images nexvion-web || true
+            script {
+                def collectDiag = {
+                    sh(
+                        script: '''
+                            echo "=============================="
+                            echo "Docker Diagnostics"
+                            echo "=============================="
+                            docker images nexvion-web || true
 
-                    if command -v kubectl >/dev/null 2>&1; then
-                        echo ""
-                        echo "=============================="
-                        echo "EKS Workload State Summary"
-                        echo "=============================="
-                        kubectl get deployment,hpa,ingress -n nexvion || true
-                        kubectl get pods -n nexvion -o wide || true
-                    fi
-                ''',
-                label: 'Collect Diagnostics'
-            )
+                            if command -v kubectl >/dev/null 2>&1; then
+                                echo ""
+                                echo "=============================="
+                                echo "EKS Workload State Summary"
+                                echo "=============================="
+                                kubectl get deployment,hpa,ingress -n nexvion || true
+                                kubectl get pods -n nexvion -o wide || true
+                            fi
+                        ''',
+                        label: 'Collect Diagnostics'
+                    )
+                }
+                try {
+                    withCredentials([usernamePassword(credentialsId: 'ecr-credentials', usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY')]) {
+                        collectDiag()
+                    }
+                } catch (Exception e) {
+                    collectDiag()
+                }
+            }
         }
 
         success {

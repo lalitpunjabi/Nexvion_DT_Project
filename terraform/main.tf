@@ -319,6 +319,17 @@ resource "aws_eks_cluster" "nexvion" {
   ]
 }
 
+resource "aws_security_group_rule" "eks_cluster_ingress_vpc" {
+  type              = "ingress"
+  from_port         = 443
+  to_port           = 443
+  protocol          = "tcp"
+  security_group_id = aws_eks_cluster.nexvion.vpc_config[0].cluster_security_group_id
+  cidr_blocks       = ["172.31.0.0/16"]
+  description       = "Allow VPC instances (Jenkins EC2) to communicate with EKS control plane API"
+}
+
+
 # --- EKS Worker Node Group IAM Role & Policy Attachments ---
 resource "aws_iam_role" "eks_node_group" {
   name = "nexvion-eks-node-group-role"
